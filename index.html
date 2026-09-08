@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="異能力怪盗団 キャラクター作成支援ツール" />
-  <title>異能力怪盗団 キャラクター作成ツール</title>
+  <meta name="description" content="Ability Phantoms キャラクター作成支援ツール" />
+  <title>Ability Phantoms キャラクター作成ツール</title>
 
   <!--
     このCSSファイルがWeb画面全体の見た目を担当します。
@@ -29,8 +29,8 @@
 <body>
   <header class="app-header no-print">
     <div>
-      <p class="eyebrow">Ability Phantoms Character Builder</p>
-      <h1>異能力怪盗団 キャラクター作成ツール</h1>
+      <p class="eyebrow">Ability Phantoms</p>
+      <h1>Ability Phantoms キャラクター作成ツール</h1>
       <p class="subtitle">ブラウザだけで作成・保存・復元・PDF出力・ココフォリア出力</p>
     </div>
 
@@ -80,6 +80,32 @@
             <h2>基本情報</h2>
           </div>
           <p>フレーバー情報は自由入力です。</p>
+        </div>
+
+        <!--
+          立ち絵・差分管理
+          -------------------------------------------------------------
+          画像はサーバーへ送信せず、ブラウザで読み込んだ画像をキャラクターJSON内へ
+          Data URLとして保存します。これによりJSONを保存しておけば、次回読み込んだ際に
+          立ち絵と差分も一緒に復元できます。
+        -->
+        <div class="portrait-manager">
+          <div class="portrait-preview-wrap">
+            <img id="portraitPreview" class="portrait-preview" alt="キャラクター立ち絵プレビュー" />
+            <div id="portraitEmpty" class="portrait-empty">立ち絵未設定</div>
+          </div>
+          <div class="portrait-controls">
+            <strong>キャラクター立ち絵・差分</strong>
+            <p class="small-note">PDFには現在選択中の立ち絵が表示されます。差分を複数登録して切り替え可能です。</p>
+            <div class="inline-actions no-print">
+              <label class="button secondary file-button">
+                ＋ 立ち絵を追加
+                <input type="file" id="portraitUploadInput" accept="image/*" hidden />
+              </label>
+              <button type="button" class="button secondary" id="removePortraitButton">現在の差分を削除</button>
+            </div>
+            <div id="portraitVariants" class="portrait-variants no-print"></div>
+          </div>
         </div>
 
         <div class="form-grid two-column">

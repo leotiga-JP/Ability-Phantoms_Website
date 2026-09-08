@@ -1,5 +1,5 @@
 /* =====================================================================
-   異能力怪盗団 キャラクター作成ツール - メインロジック
+   Ability Phantoms キャラクター作成ツール - メインロジック
    ---------------------------------------------------------------------
    このファイルは「データをどう計算するか」「画面へどう表示するか」を担当します。
 
@@ -49,7 +49,7 @@
   function createInitialCharacter() {
     return {
       // 保存JSONの形式を管理するための情報。
-      format: "ability-thief-character",
+      format: "ability-phantoms-character",
       version: "1.0.0",
 
       profile: {
@@ -62,7 +62,15 @@
         playStyle: "",
         birthplace: "",
         appearance: "",
-        personality: ""
+        personality: "",
+
+        // 立ち絵・差分データ。
+        // dataUrlにはアップロード画像をData URLとして保存します。
+        // activeIdが、画面表示・PDF出力に使う現在選択中の差分です。
+        portraits: {
+          activeId: null,
+          images: []
+        }
       },
 
       stats: {
@@ -109,6 +117,19 @@
   }
 
   let character = createInitialCharacter();
+
+  // -------------------------------------------------------------------
+  // PDF保存確認フラグ
+  // -------------------------------------------------------------------
+  // ユーザーが最後にPDF保存を行ったかを管理します。
+  // 入力内容が変更されたら false に戻り、ページ離脱時にブラウザ標準の確認を出します。
+  // ※ beforeunloadの文言はブラウザ側で固定表示されるため、任意の文章を表示できない
+  //    ブラウザがあります。
+  let pdfSavedSinceLastChange = false;
+
+  function markPdfNeedsSaving() {
+    pdfSavedSinceLastChange = false;
+  }
 
   // -------------------------------------------------------------------
   // 2. 標準ダイス式
@@ -647,6 +668,92 @@
   }
 
   // -------------------------------------------------------------------
+  // 9. 立ち絵・差分管理
+  // -------------------------------------------------------------------
+
+  function getActivePortrait() {
+    const portraits = character.profile.portraits;
+    if (!portraits || !Array.isArray(portraits.images)) return null;
+    return portraits.images.find(image => image.id === portraits.activeId) || portraits.images[0] || null;
+  }
+
+  function renderPortraits() {
+    const preview = $("#portraitPreview");
+    const empty = $("#portraitEmpty");
+    const variants = $("#portraitVariants");
+    const removeButton = $("#removePortraitButton");
+    const active = getActivePortrait();
+    const portraits = character.profile.portraits || { activeId: null, images: [] };
+
+    if (active) {
+      preview.src = active.dataUrl;
+      preview.alt = `${active.name}の立ち絵`;
+      preview.classList.remove("hidden");
+      empty.classList.add("hidden");
+    } else {
+      preview.removeAttribute("src");
+      preview.classList.add("hidden");
+      empty.classList.remove("hidden");
+    }
+
+    variants.innerHTML = portraits.images.map(image => `
+      <button type="button" class="portrait-variant ${image.id === portraits.activeId ? "active" : ""}" data-portrait-id="${escapeHtml(image.id)}">
+        <img src="${escapeHtml(image.dataUrl)}" alt="${escapeHtml(image.name)}" />
+        <span>${escapeHtml(image.name)}</span>
+      </button>
+    `).join("");
+
+    variants.querySelectorAll("[data-portrait-id]").forEach(button => {
+      button.addEventListener("click", () => {
+        character.profile.portraits.activeId = button.dataset.portraitId;
+        markPdfNeedsSaving();
+        renderPortraits();
+      });
+    });
+
+    removeButton.disabled = !active;
+  }
+
+  function handlePortraitUpload(file) {
+    if (!file) return;
+
+    // Data URL方式はJSON単体で立ち絵を復元できる反面、画像が大きいと保存JSONも大きくなります。
+    // 実用上は数MB程度の画像を推奨します。
+    if (!file.type.startsWith("image/")) {
+      alert("画像ファイルを選択してください。");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const image = {
+        id: uid("portrait"),
+        name: file.name.replace(/\.[^.]+$/, "") || "立ち絵",
+        dataUrl: String(reader.result)
+      };
+
+      character.profile.portraits.images.push(image);
+      character.profile.portraits.activeId = image.id;
+      markPdfNeedsSaving();
+      renderPortraits();
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function removeActivePortrait() {
+    const portraits = character.profile.portraits;
+    const activeIndex = portraits.images.findIndex(image => image.id === portraits.activeId);
+    if (activeIndex < 0) return;
+
+    if (!confirm("現在選択中の立ち絵差分を削除しますか？")) return;
+
+    portraits.images.splice(activeIndex, 1);
+    portraits.activeId = portraits.images[0]?.id || null;
+    markPdfNeedsSaving();
+    renderPortraits();
+  }
+
+  // -------------------------------------------------------------------
   // 9. ガジェット/アイテムUI
   // -------------------------------------------------------------------
 
@@ -902,6 +1009,15 @@
     if (!Array.isArray(merged.gadgets)) merged.gadgets = [];
     if (!Array.isArray(merged.items)) merged.items = [];
 
+    // 旧バージョンのJSONには立ち絵情報が存在しないため、安全に初期化します。
+    if (!merged.profile.portraits || typeof merged.profile.portraits !== "object") {
+      merged.profile.portraits = { activeId: null, images: [] };
+    }
+    if (!Array.isArray(merged.profile.portraits.images)) merged.profile.portraits.images = [];
+    if (!merged.profile.portraits.activeId && merged.profile.portraits.images[0]) {
+      merged.profile.portraits.activeId = merged.profile.portraits.images[0].id;
+    }
+
     merged.abilities = merged.abilities.map(ability => ({
       ...defaultAbility(),
       ...ability,
@@ -947,6 +1063,7 @@
         } else {
           character = normalizeImportedCharacter(data);
         }
+        markPdfNeedsSaving();
         renderAll();
       } catch (error) {
         alert(`JSONの読み込みに失敗しました。\n${error.message}`);
@@ -973,9 +1090,13 @@
         pagebreak: { mode: ["css", "legacy"] }
       };
       await window.html2pdf().set(options).from(element).save();
+      pdfSavedSinceLastChange = true;
       return;
     }
 
+    // 印刷ダイアログ経由の保存はブラウザ側で結果を取得できないため、
+    // ダイアログを開いた時点で確認済み扱いにします。
+    pdfSavedSinceLastChange = true;
     window.print();
   }
 
@@ -1028,6 +1149,7 @@
     renderSkills();
     renderAbilities();
     renderGadgetsAndItems();
+    renderPortraits();
     renderValidation();
     updateCocofoliaPreview();
 
@@ -1068,6 +1190,7 @@
     $("#newCharacterButton").addEventListener("click", () => {
       if (!confirm("現在の入力内容を破棄して新規キャラクターを作成しますか？\n必要なら先にJSON保存してください。")) return;
       character = createInitialCharacter();
+      markPdfNeedsSaving();
       renderAll();
       window.scrollTo({ top: 0, behavior: "smooth" });
     });
@@ -1080,6 +1203,14 @@
     });
 
     $("#pdfButton").addEventListener("click", exportPdf);
+
+    // 立ち絵・差分アップロード。
+    $("#portraitUploadInput").addEventListener("change", event => {
+      const file = event.target.files?.[0];
+      if (file) handlePortraitUpload(file);
+      event.target.value = "";
+    });
+    $("#removePortraitButton").addEventListener("click", removeActivePortrait);
 
     $("#cocofoliaButton").addEventListener("click", () => {
       const json = JSON.stringify(buildCocofoliaData(), null, 2);
@@ -1094,6 +1225,22 @@
       } catch {
         prompt("コピーできない場合は、以下を手動でコピーしてください。", json);
       }
+    });
+
+    // 入力内容が変更されたら「PDF保存済み」状態を解除します。
+    document.addEventListener("input", event => {
+      if (event.target.matches("input, textarea, select")) markPdfNeedsSaving();
+    }, true);
+    document.addEventListener("change", event => {
+      if (event.target.matches("input, textarea, select")) markPdfNeedsSaving();
+    }, true);
+
+    // ページ離脱・再読み込み時の確認。
+    // ブラウザの仕様上、表示文言は各ブラウザが決定する場合があります。
+    window.addEventListener("beforeunload", event => {
+      if (pdfSavedSinceLastChange) return;
+      event.preventDefault();
+      event.returnValue = "";
     });
   }
 
