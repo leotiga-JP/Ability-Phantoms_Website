@@ -1,0 +1,321 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="異能力怪盗団 キャラクター作成支援ツール" />
+  <title>異能力怪盗団 キャラクター作成ツール</title>
+
+  <!--
+    このCSSファイルがWeb画面全体の見た目を担当します。
+    JavaScriptとは分離しているため、色や余白、文字サイズなどを変更したい場合は
+    style.cssを編集してください。
+  -->
+  <link rel="stylesheet" href="style.css" />
+
+  <!--
+    PDF出力用ライブラリ。
+    GitHub Pagesでは外部CDNを利用できます。
+    「完全オフラインでもPDF出力したい」場合は、将来的にこのライブラリを
+    ローカルファイルとして同梱する構成へ変更できます。
+  -->
+  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+  <!-- 標準技能などの編集しやすいマスターデータ。 -->
+  <script defer src="data.js"></script>
+  <!-- 本体ロジック。最後に読み込むことで、data.jsの内容を利用できます。 -->
+  <script defer src="app.js"></script>
+</head>
+<body>
+  <header class="app-header no-print">
+    <div>
+      <p class="eyebrow">Ability Thief Character Builder</p>
+      <h1>異能力怪盗団 キャラクター作成ツール</h1>
+      <p class="subtitle">ブラウザだけで作成・保存・復元・PDF出力・ココフォリア出力</p>
+    </div>
+
+    <div class="header-actions">
+      <button class="button secondary" id="newCharacterButton">新規</button>
+      <button class="button secondary" id="saveJsonButton">JSON保存</button>
+      <label class="button secondary file-button">
+        JSON読込
+        <input type="file" id="loadJsonInput" accept="application/json,.json" hidden />
+      </label>
+      <button class="button" id="pdfButton">PDF保存</button>
+      <button class="button accent" id="cocofoliaButton">ココフォリアJSON</button>
+    </div>
+  </header>
+
+  <main class="app-shell">
+    <aside class="sidebar no-print">
+      <nav>
+        <button class="nav-button active" data-target="profileSection">基本情報</button>
+        <button class="nav-button" data-target="statsSection">能力値</button>
+        <button class="nav-button" data-target="pointsSection">ポイント</button>
+        <button class="nav-button" data-target="skillsSection">技能</button>
+        <button class="nav-button" data-target="abilitiesSection">異能力</button>
+        <button class="nav-button" data-target="itemsSection">所持品</button>
+        <button class="nav-button" data-target="notesSection">設定・メモ</button>
+        <button class="nav-button" data-target="cocofoliaSection">ココフォリア</button>
+      </nav>
+
+      <div class="sidebar-note">
+        <strong>データはサーバーへ保存されません</strong>
+        <p>JSONを自分で保存しておけば、後から同じキャラクターを完全に復元できます。</p>
+      </div>
+    </aside>
+
+    <section class="content">
+      <div id="validationPanel" class="validation-panel hidden"></div>
+
+      <!-- =============================================================
+           1. 基本情報
+           職業・所属怪盗団・プレイスタイルなどは、今回の要件に従って
+           マスターデータを固定せず、プレイヤーが自由に入力できる設計です。
+           ============================================================= -->
+      <section class="sheet-section" id="profileSection">
+        <div class="section-heading">
+          <div>
+            <p class="section-number">01</p>
+            <h2>基本情報</h2>
+          </div>
+          <p>フレーバー情報は自由入力です。</p>
+        </div>
+
+        <div class="form-grid two-column">
+          <label class="field">
+            <span>キャラクター名</span>
+            <input data-bind="profile.name" type="text" placeholder="例：怪盗ノクターン" />
+          </label>
+          <label class="field">
+            <span>怪盗名</span>
+            <input data-bind="profile.thiefName" type="text" placeholder="例：Nocturne" />
+          </label>
+          <label class="field">
+            <span>年齢</span>
+            <input data-bind="profile.age" type="number" min="0" />
+          </label>
+          <label class="field">
+            <span>性別</span>
+            <input data-bind="profile.gender" type="text" />
+          </label>
+          <label class="field">
+            <span>職業</span>
+            <input data-bind="profile.occupation" type="text" placeholder="例：私立探偵" />
+          </label>
+          <label class="field">
+            <span>所属怪盗団</span>
+            <input data-bind="profile.thiefGroup" type="text" placeholder="例：フリーランス" />
+          </label>
+          <label class="field">
+            <span>プレイスタイル</span>
+            <input data-bind="profile.playStyle" type="text" placeholder="自由入力" />
+          </label>
+          <label class="field">
+            <span>出身</span>
+            <input data-bind="profile.birthplace" type="text" />
+          </label>
+        </div>
+      </section>
+
+      <!-- =============================================================
+           2. 能力値
+           標準ルールのダイス式を初期設定として利用しつつ、最終値は
+           プレイヤーが自由に直接編集できるようにしています。
+           ============================================================= -->
+      <section class="sheet-section" id="statsSection">
+        <div class="section-heading">
+          <div>
+            <p class="section-number">02</p>
+            <h2>能力値・派生値</h2>
+          </div>
+          <button class="button" id="rollAllStatsButton">🎲 全能力値を振る</button>
+        </div>
+
+        <div class="stats-grid" id="statsGrid"></div>
+
+        <div class="derived-grid">
+          <div class="metric-card">
+            <span>HP</span>
+            <div class="metric-row">
+              <span class="metric-formula">身体 + カリスマ + 3</span>
+              <input data-bind="derived.hpOverride" type="number" />
+            </div>
+          </div>
+          <div class="metric-card">
+            <span>PP</span>
+            <div class="metric-row">
+              <span class="metric-formula">精神 + 6</span>
+              <input data-bind="derived.ppOverride" type="number" />
+            </div>
+          </div>
+          <div class="metric-card">
+            <span>イニシアチブ</span>
+            <div class="metric-row">
+              <span class="metric-formula">ceil((身体 + 知性) / 2)</span>
+              <input data-bind="derived.initiativeOverride" type="number" />
+            </div>
+          </div>
+          <div class="metric-card critical-card">
+            <span>クリティカル値</span>
+            <div class="metric-row">
+              <!-- クリティカル値は完全手動入力。自動計算しません。 -->
+              <input data-bind="derived.criticalValue" type="number" min="1" max="6" placeholder="1〜6" />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- =============================================================
+           3. ポイント
+           「基本値」はルールブックから自動算出し、「その他」は手入力で補正できます。
+           使用済みは技能・異能力などの入力から自動集計し、残りを算出します。
+           ============================================================= -->
+      <section class="sheet-section" id="pointsSection">
+        <div class="section-heading">
+          <div>
+            <p class="section-number">03</p>
+            <h2>ポイント管理</h2>
+          </div>
+          <p>追加ポイントは「その他」に入力してください。</p>
+        </div>
+        <div class="points-grid" id="pointsGrid"></div>
+      </section>
+
+      <!-- =============================================================
+           4. 技能
+           標準技能はdata.jsから読み込みます。
+           「＋ 技能を追加」でオリジナル技能を何行でも追加できます。
+           ============================================================= -->
+      <section class="sheet-section" id="skillsSection">
+        <div class="section-heading">
+          <div>
+            <p class="section-number">04</p>
+            <h2>技能</h2>
+          </div>
+          <button class="button" id="addSkillButton">＋ 技能を追加</button>
+        </div>
+        <div id="skillsContainer"></div>
+      </section>
+
+      <!-- =============================================================
+           5. 異能力
+           属性・拡張・制約はプレイヤーが自由入力します。
+           それぞれの取得/使用コストを入力し、異能力単位で自動計算します。
+           ============================================================= -->
+      <section class="sheet-section" id="abilitiesSection">
+        <div class="section-heading">
+          <div>
+            <p class="section-number">05</p>
+            <h2>異能力</h2>
+          </div>
+          <button class="button" id="addAbilityButton">＋ 異能力を追加</button>
+        </div>
+        <div id="abilitiesContainer"></div>
+      </section>
+
+      <!-- =============================================================
+           6. 所持品
+           ガジェットは標準ルールでは1シナリオ最大2つですが、ハウスルール対応を優先して
+           入力自体は妨げず、2つを超えた場合は警告表示にします。
+           ============================================================= -->
+      <section class="sheet-section" id="itemsSection">
+        <div class="section-heading">
+          <div>
+            <p class="section-number">06</p>
+            <h2>ガジェット・アイテム</h2>
+          </div>
+          <div class="inline-actions">
+            <button class="button secondary" id="addGadgetButton">＋ ガジェット</button>
+            <button class="button secondary" id="addItemButton">＋ アイテム</button>
+          </div>
+        </div>
+        <div class="subheading-row">
+          <h3>ガジェット <span id="gadgetCount" class="badge"></span></h3>
+        </div>
+        <div id="gadgetsContainer"></div>
+
+        <div class="subheading-row">
+          <h3>アイテム</h3>
+        </div>
+        <div id="itemsContainer"></div>
+      </section>
+
+      <!-- =============================================================
+           7. 設定・メモ
+           ============================================================= -->
+      <section class="sheet-section" id="notesSection">
+        <div class="section-heading">
+          <div>
+            <p class="section-number">07</p>
+            <h2>設定・メモ</h2>
+          </div>
+        </div>
+        <div class="form-grid two-column">
+          <label class="field wide">
+            <span>外見</span>
+            <textarea data-bind="profile.appearance" rows="4"></textarea>
+          </label>
+          <label class="field wide">
+            <span>性格</span>
+            <textarea data-bind="profile.personality" rows="4"></textarea>
+          </label>
+          <label class="field wide">
+            <span>経歴</span>
+            <textarea data-bind="notes.background" rows="5"></textarea>
+          </label>
+          <label class="field wide">
+            <span>その他メモ</span>
+            <textarea data-bind="notes.memo" rows="5"></textarea>
+          </label>
+        </div>
+      </section>
+
+      <!-- =============================================================
+           8. ココフォリア出力設定
+           現在の公式ドキュメントで案内されているstatus/params/commandsの考え方に
+           合わせ、ユーザーが出力先のラベル等も編集できるようにします。
+           ============================================================= -->
+      <section class="sheet-section" id="cocofoliaSection">
+        <div class="section-heading">
+          <div>
+            <p class="section-number">08</p>
+            <h2>ココフォリア出力</h2>
+          </div>
+          <button class="button accent" id="copyCocofoliaButton">JSONをコピー</button>
+        </div>
+
+        <div class="form-grid two-column">
+          <label class="field wide">
+            <span>コマ画像URL</span>
+            <input data-bind="cocofolia.iconUrl" type="url" placeholder="https://..." />
+          </label>
+          <label class="field wide">
+            <span>キャラクターシート等の外部URL</span>
+            <input data-bind="cocofolia.externalUrl" type="url" placeholder="https://..." />
+          </label>
+          <label class="field">
+            <span>コマカラー</span>
+            <input data-bind="cocofolia.color" type="text" value="#7c3aed" />
+          </label>
+        </div>
+
+        <label class="field">
+          <span>チャットパレット（1行1コマンド）</span>
+          <textarea data-bind="cocofolia.commands" id="cocofoliaCommands" rows="12"></textarea>
+        </label>
+
+        <details class="json-preview">
+          <summary>現在のココフォリアJSONを表示</summary>
+          <pre id="cocofoliaPreview"></pre>
+        </details>
+      </section>
+
+      <!-- PDFとして出力する範囲の終端。 -->
+      <section class="footer-note">
+        <p>このツールはブラウザ内で動作します。JSONを保存しておくと、いつでもキャラクターを復元できます。</p>
+      </section>
+    </section>
+  </main>
+</body>
+</html>
