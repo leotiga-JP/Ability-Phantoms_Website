@@ -1000,7 +1000,6 @@
 
   function renderGadgetsAndItems() {
     // ガジェットに上限は設けないため、現在の個数だけ表示します。
-    $("#gadgetCount").textContent = `${character.gadgets.length} 個`;
     $("#gadgetsContainer").innerHTML = character.gadgets.map((item, index) => `
       <article class="repeat-card">
         <div class="card-header">
