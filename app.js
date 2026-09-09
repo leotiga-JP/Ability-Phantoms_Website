@@ -1174,10 +1174,6 @@
       messages.push({ type: "warning", text: `コア異能力が ${coreCount} 個設定されています。標準値1を超えています。` });
     }
 
-    if (character.gadgets.length > 2) {
-      messages.push({ type: "warning", text: `ガジェットが ${character.gadgets.length} 個あります。標準ルールの最大2個を超えています。` });
-    }
-
     if (character.derived.criticalValue !== "") {
       const critical = toNumber(character.derived.criticalValue);
       if (critical < 1 || critical > 6) messages.push({ type: "warning", text: "クリティカル値は標準ルールでは1〜6です。" });
