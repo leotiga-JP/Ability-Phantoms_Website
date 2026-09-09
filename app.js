@@ -491,6 +491,8 @@
     element.addEventListener("input", () => {
       setByPath(character, path, element.type === "number" ? numberOrNull(element.value) : element.value);
       refreshComputedOnly();
+      // 第2段階：画面上部を含む全ての data-bind 入力をブラウザへ自動保存します。
+      scheduleLocalSave();
     });
   }
 
@@ -861,6 +863,8 @@
       character.abilities[index][key] = input.value;
     }
     refreshComputedOnly();
+    // 異能力の編集内容も即時に保存予約します。
+    scheduleLocalSave();
     const card = input.closest(".repeat-card");
     if (card) updateAbilityCardTotals(card, character.abilities[index]);
   }
@@ -876,6 +880,8 @@
       input.type === "number" ? numberOrNull(input.value) ?? 0 : input.value;
 
     refreshComputedOnly();
+    // 属性・拡張・制約などの構成要素も保存予約します。
+    scheduleLocalSave();
     const card = input.closest(".repeat-card");
     if (card) updateAbilityCardTotals(card, character.abilities[abilityIndex]);
   }
@@ -993,7 +999,8 @@
   }
 
   function renderGadgetsAndItems() {
-    $("#gadgetCount").textContent = `${character.gadgets.length} / 2`;
+    // ガジェットに上限は設けないため、現在の個数だけ表示します。
+    $("#gadgetCount").textContent = `${character.gadgets.length} 個`;
     $("#gadgetsContainer").innerHTML = character.gadgets.map((item, index) => `
       <article class="repeat-card">
         <div class="card-header">
@@ -1030,6 +1037,8 @@
       input.addEventListener("input", () => {
         const i = Number(input.dataset.index), k = input.dataset.gadgetField;
         character.gadgets[i][k] = input.type === "number" ? numberOrNull(input.value) ?? 0 : input.value;
+        // ガジェット編集内容をlocalStorageへ自動保存します。
+        scheduleLocalSave();
         renderAll(false);
       });
     });
@@ -1038,6 +1047,8 @@
       input.addEventListener("input", () => {
         const i = Number(input.dataset.index), k = input.dataset.itemField;
         character.items[i][k] = input.type === "number" ? numberOrNull(input.value) ?? 0 : input.value;
+        // アイテム編集内容をlocalStorageへ自動保存します。
+        scheduleLocalSave();
         renderAll(false);
       });
     });
@@ -1172,6 +1183,10 @@
     const coreCount = character.abilities.filter(a => a.isCore).length;
     if (coreCount > 1) {
       messages.push({ type: "warning", text: `コア異能力が ${coreCount} 個設定されています。標準値1を超えています。` });
+    }
+
+    if (character.gadgets.length > 2) {
+      messages.push({ type: "warning", text: `ガジェットが ${character.gadgets.length} 個あります。標準ルールの最大2個を超えています。` });
     }
 
     if (character.derived.criticalValue !== "") {
