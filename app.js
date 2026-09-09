@@ -52,6 +52,13 @@
       format: "ability-phantoms-character",
       version: "1.0.0",
 
+      meta: {
+        // localStorageで複数キャラクターを区別するためのIDです。
+        id: uid("character"),
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      },
+
       profile: {
         name: "新しいキャラクター",
         thiefName: "",
@@ -119,6 +126,205 @@
   let character = createInitialCharacter();
 
   // -------------------------------------------------------------------
+  // 第2段階：ブラウザ内永続保存（localStorage）
+  // -------------------------------------------------------------------
+  // localStorageには「キャラクターJSON」を文字列として保存します。
+  // サーバーには送信しないため、GitHub Pagesだけでも利用できます。
+  //
+  // ★ 将来Supabaseへ移行する場合も、ここで扱うcharacterオブジェクトを
+  //   そのままクラウド保存対象にしやすいよう、保存形式をJSON中心にします。
+  const LOCAL_STORAGE_KEY = "ability-phantoms.characters.v2";
+  const CURRENT_CHARACTER_KEY = "ability-phantoms.current-character.v2";
+  let saveTimer = null;
+  let isRestoringLocalData = false;
+
+  function getStoredCharacters() {
+    // 保存済みキャラクターを { [id]: character } として取得します。
+    try {
+      const raw = localStorage.getItem(LOCAL_STORAGE_KEY);
+      if (!raw) return {};
+      const parsed = JSON.parse(raw);
+      return parsed && typeof parsed === "object" ? parsed : {};
+    } catch (error) {
+      console.error("localStorageの読み込みに失敗しました", error);
+      return {};
+    }
+  }
+
+  function saveStoredCharacters(characters) {
+    // localStorageはQuotaExceededErrorが発生する可能性があるため、必ず例外処理します。
+    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(characters));
+  }
+
+  function updateAutoSaveStatus(type, message) {
+    const element = $("#autoSaveStatus");
+    if (!element) return;
+    element.classList.remove("saved", "saving", "error");
+    if (type) element.classList.add(type);
+    element.textContent = message;
+  }
+
+  function getCharacterId() {
+    if (!character.meta) character.meta = {};
+    if (!character.meta.id) character.meta.id = uid("character");
+    return character.meta.id;
+  }
+
+  function saveCurrentCharacterToLocalStorage() {
+    if (isRestoringLocalData) return;
+
+    try {
+      const characters = getStoredCharacters();
+      const id = getCharacterId();
+      if (!character.meta.createdAt) character.meta.createdAt = new Date().toISOString();
+      character.meta.updatedAt = new Date().toISOString();
+      characters[id] = character;
+      saveStoredCharacters(characters);
+      localStorage.setItem(CURRENT_CHARACTER_KEY, id);
+      updateAutoSaveStatus("saved", "● 自動保存済み");
+      renderSavedCharacters();
+    } catch (error) {
+      console.error("localStorageへの保存に失敗しました", error);
+      updateAutoSaveStatus("error", "● 自動保存失敗");
+      alert("ブラウザ内保存に失敗しました。立ち絵や差分画像を減らすか、JSON保存を利用してください。\n\n" + error.message);
+    }
+  }
+
+  function scheduleLocalSave() {
+    // 文字入力のたびに保存せず、入力が少し落ち着いてから保存します。
+    if (isRestoringLocalData) return;
+    updateAutoSaveStatus("saving", "● 保存中...");
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(saveCurrentCharacterToLocalStorage, 500);
+  }
+
+  function renderSavedCharacters() {
+    const container = $("#savedCharactersList");
+    const count = $("#savedCharacterCount");
+    if (!container) return;
+
+    const characters = getStoredCharacters();
+    const list = Object.values(characters).sort((a, b) =>
+      new Date(b?.meta?.updatedAt || 0) - new Date(a?.meta?.updatedAt || 0)
+    );
+
+    count.textContent = String(list.length);
+    container.innerHTML = list.length ? list.map(item => {
+      const id = item?.meta?.id || "";
+      const isActive = id === getCharacterId();
+      const updated = item?.meta?.updatedAt ? new Date(item.meta.updatedAt).toLocaleString("ja-JP") : "日時不明";
+      return `
+        <button type="button" class="saved-character-item ${isActive ? "active" : ""}" data-load-character-id="${escapeHtml(id)}">
+          <strong>${escapeHtml(item?.profile?.name || "無名のキャラクター")}</strong>
+          <span class="saved-character-meta">${escapeHtml(updated)}</span>
+        </button>`;
+    }).join("") : '<p class="small-note">まだ保存済みキャラクターはありません。</p>';
+
+    $$('[data-load-character-id]', container).forEach(button => {
+      button.addEventListener("click", () => loadCharacterFromLocalStorage(button.dataset.loadCharacterId));
+    });
+  }
+
+  function loadCharacterFromLocalStorage(id) {
+    const characters = getStoredCharacters();
+    const target = characters[id];
+    if (!target) return;
+
+    if (!confirm("現在のキャラクターを保存済みデータへ切り替えますか？\n現在の入力は自動保存されています。")) return;
+
+    clearTimeout(saveTimer);
+    isRestoringLocalData = true;
+    character = normalizeImportedCharacter(JSON.parse(JSON.stringify(target)));
+    localStorage.setItem(CURRENT_CHARACTER_KEY, id);
+    pdfSavedSinceLastChange = false;
+    isRestoringLocalData = false;
+    renderAll();
+    updateAutoSaveStatus("saved", "● 保存済みを読込");
+    renderSavedCharacters();
+  }
+
+  function duplicateCurrentCharacter() {
+    // 現在のキャラクターをコピーして、新しいIDを与えます。
+    const copy = JSON.parse(JSON.stringify(character));
+    copy.meta = copy.meta || {};
+    copy.meta.id = uid("character");
+    copy.meta.createdAt = new Date().toISOString();
+    copy.meta.updatedAt = new Date().toISOString();
+    copy.profile = copy.profile || {};
+    copy.profile.name = `${copy.profile.name || "キャラクター"}（コピー）`;
+    character = normalizeImportedCharacter(copy);
+    saveCurrentCharacterToLocalStorage();
+    renderAll();
+  }
+
+  function deleteCurrentCharacter() {
+    const characters = getStoredCharacters();
+    const id = getCharacterId();
+    const name = character.profile?.name || "無名のキャラクター";
+    if (!characters[id]) return;
+
+    if (!confirm(`「${name}」をブラウザ内保存から削除しますか？\nこの操作は元に戻せません。`)) return;
+
+    delete characters[id];
+    saveStoredCharacters(characters);
+
+    const next = Object.values(characters).sort((a, b) =>
+      new Date(b?.meta?.updatedAt || 0) - new Date(a?.meta?.updatedAt || 0)
+    )[0];
+
+    if (next?.meta?.id) {
+      character = normalizeImportedCharacter(JSON.parse(JSON.stringify(next)));
+      localStorage.setItem(CURRENT_CHARACTER_KEY, next.meta.id);
+    } else {
+      character = createInitialCharacter();
+      // 初期状態も保存して、次回アクセス時に復元できるようにします。
+      saveCurrentCharacterToLocalStorage();
+    }
+
+    pdfSavedSinceLastChange = false;
+    renderAll();
+    renderSavedCharacters();
+  }
+
+  function clearCurrentCharacter() {
+    if (!confirm("現在のキャラクターの入力内容を初期化しますか？\n保存済みデータも初期状態で上書きされます。")) return;
+    clearTimeout(saveTimer);
+    const oldMeta = character.meta ? { ...character.meta } : {};
+    character = createInitialCharacter();
+    character.meta.id = oldMeta.id || uid("character");
+    character.meta.createdAt = oldMeta.createdAt || new Date().toISOString();
+    character.profile.name = "新しいキャラクター";
+    pdfSavedSinceLastChange = false;
+    renderAll();
+    saveCurrentCharacterToLocalStorage();
+  }
+
+  function restoreLocalStorageOnStartup() {
+    // 「最後に編集していたキャラクター」を優先して復元します。
+    const characters = getStoredCharacters();
+    const currentId = localStorage.getItem(CURRENT_CHARACTER_KEY);
+    let restored = currentId && characters[currentId] ? characters[currentId] : null;
+
+    if (!restored) {
+      const list = Object.values(characters).sort((a, b) =>
+        new Date(b?.meta?.updatedAt || 0) - new Date(a?.meta?.updatedAt || 0)
+      );
+      restored = list[0] || null;
+    }
+
+    if (!restored) {
+      character.meta = character.meta || {};
+      getCharacterId();
+      return false;
+    }
+
+    isRestoringLocalData = true;
+    character = normalizeImportedCharacter(JSON.parse(JSON.stringify(restored)));
+    isRestoringLocalData = false;
+    return true;
+  }
+
+  // -------------------------------------------------------------------
   // PDF保存確認フラグ
   // -------------------------------------------------------------------
   // ユーザーが最後にPDF保存を行ったかを管理します。
@@ -129,6 +335,8 @@
 
   function markPdfNeedsSaving() {
     pdfSavedSinceLastChange = false;
+    // PDF保存フラグが変わる操作は、キャラクター内容の変更操作でもあります。
+    scheduleLocalSave();
   }
 
   // -------------------------------------------------------------------
@@ -159,6 +367,7 @@
     Object.keys(STAT_RULES).forEach(key => {
       character.stats[key] = rollStat(key);
     });
+    markPdfNeedsSaving();
     renderAll();
   }
 
@@ -447,13 +656,17 @@
 
     $$('[data-remove-skill]', container).forEach(button => {
       button.addEventListener("click", () => {
+
         character.skills.splice(Number(button.dataset.removeSkill), 1);
+        markPdfNeedsSaving();
         renderAll();
       });
     });
   }
 
   function addCustomSkill() {
+
+    markPdfNeedsSaving();
     character.skills.push({
       id: uid("skill"),
       sourceId: null,
@@ -579,7 +792,9 @@
 
     $$('[data-remove-ability]', container).forEach(button => {
       button.addEventListener("click", () => {
+
         character.abilities.splice(Number(button.dataset.removeAbility), 1);
+        markPdfNeedsSaving();
         renderAll();
       });
     });
@@ -592,7 +807,9 @@
     $$('[data-add-component]', container).forEach(button => {
       button.addEventListener("click", () => {
         const ability = character.abilities[Number(button.dataset.abilityIndex)];
+
         ability[button.dataset.addComponent].push(defaultComponent());
+        markPdfNeedsSaving();
         renderAll();
       });
     });
@@ -601,7 +818,9 @@
       button.addEventListener("click", () => {
         const ability = character.abilities[Number(button.dataset.abilityIndex)];
         const collection = ability[button.dataset.collection];
+
         collection.splice(Number(button.dataset.componentIndex), 1);
+        markPdfNeedsSaving();
         renderAll();
       });
     });
@@ -662,7 +881,9 @@
   }
 
   function addAbility() {
+
     character.abilities.push(defaultAbility());
+    markPdfNeedsSaving();
     renderAll();
     document.getElementById("abilitiesSection").scrollIntoView({ behavior: "smooth" });
   }
@@ -758,12 +979,16 @@
   // -------------------------------------------------------------------
 
   function addGadget() {
+
     character.gadgets.push({ id: uid("gadget"), name: "新しいガジェット", description: "", quantity: 1 });
+    markPdfNeedsSaving();
     renderAll();
   }
 
   function addItem() {
+
     character.items.push({ id: uid("item"), name: "新しいアイテム", category: "", description: "", skill: "", diceBonus: 0, durability: "", quantity: 1 });
+    markPdfNeedsSaving();
     renderAll();
   }
 
@@ -818,10 +1043,12 @@
     });
 
     $$('[data-remove-gadget]').forEach(button => button.addEventListener("click", () => {
-      character.gadgets.splice(Number(button.dataset.removeGadget), 1); renderAll();
+
+      character.gadgets.splice(Number(button.dataset.removeGadget), 1); markPdfNeedsSaving(); renderAll();
     }));
     $$('[data-remove-item]').forEach(button => button.addEventListener("click", () => {
-      character.items.splice(Number(button.dataset.removeItem), 1); renderAll();
+
+      character.items.splice(Number(button.dataset.removeItem), 1); markPdfNeedsSaving(); renderAll();
     }));
   }
 
@@ -1192,8 +1419,13 @@
       character = createInitialCharacter();
       markPdfNeedsSaving();
       renderAll();
+      saveCurrentCharacterToLocalStorage();
       window.scrollTo({ top: 0, behavior: "smooth" });
     });
+
+    $("#clearCharacterButton").addEventListener("click", clearCurrentCharacter);
+    $("#duplicateCharacterButton").addEventListener("click", duplicateCurrentCharacter);
+    $("#deleteCharacterButton").addEventListener("click", deleteCurrentCharacter);
 
     $("#saveJsonButton").addEventListener("click", exportCharacterJson);
     $("#loadJsonInput").addEventListener("change", event => {
@@ -1229,10 +1461,14 @@
 
     // 入力内容が変更されたら「PDF保存済み」状態を解除します。
     document.addEventListener("input", event => {
-      if (event.target.matches("input, textarea, select")) markPdfNeedsSaving();
+      if (event.target.matches("input:not([type=file]), textarea, select")) {
+        markPdfNeedsSaving();
+      }
     }, true);
     document.addEventListener("change", event => {
-      if (event.target.matches("input, textarea, select")) markPdfNeedsSaving();
+      if (event.target.matches("input:not([type=file]), textarea, select")) {
+        markPdfNeedsSaving();
+      }
     }, true);
 
     // ページ離脱・再読み込み時の確認。
@@ -1249,9 +1485,24 @@
   // -------------------------------------------------------------------
 
   document.addEventListener("DOMContentLoaded", () => {
+    // 起動時に、最後に編集していたキャラクターをlocalStorageから復元します。
+    const restored = restoreLocalStorageOnStartup();
+
     // HTMLに直接書いているdata-bind入力の初期値を反映。
     syncBoundInputs(document);
     setupEvents();
     renderAll();
+    renderSavedCharacters();
+
+    if (restored) {
+      updateAutoSaveStatus("saved", "● 自動保存から復元");
+    } else {
+      updateAutoSaveStatus("saved", "● ブラウザ内保存準備完了");
+      // 初回アクセス時にもキャラクターIDだけは発行しておきます。
+      saveCurrentCharacterToLocalStorage();
+    }
+
+    // 起動直後はまだユーザー変更がないため、離脱警告は一度解除します。
+    pdfSavedSinceLastChange = true;
   });
 })();

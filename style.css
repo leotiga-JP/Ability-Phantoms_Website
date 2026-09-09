@@ -364,3 +364,53 @@ textarea { resize: vertical; }
   .skill-table { min-width: 850px; }
   #skillsContainer { overflow-x: auto; }
 }
+
+
+/* ================================================================
+   第2段階：localStorageキャラクター管理UI
+   ---------------------------------------------------------------
+   ここは「見た目」だけを担当します。保存そのものはapp.jsです。
+   ================================================================ */
+.save-status {
+  display: inline-flex;
+  align-items: center;
+  min-height: 38px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(255,255,255,.72);
+  color: var(--muted);
+  font-size: .78rem;
+  font-weight: 700;
+}
+.save-status.saved { color: #3b6d4a; border-color: #b7d6c0; background: #f4fbf6; }
+.save-status.saving { color: #8b681e; border-color: #ead59d; background: #fffaf0; }
+.save-status.error { color: #9b3f3f; border-color: #e4b7b7; background: #fff5f5; }
+.character-manager {
+  margin-top: 14px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(255,255,255,.68);
+}
+.manager-heading { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.saved-character-list { display: grid; gap: 6px; margin-top: 10px; max-height: 240px; overflow: auto; }
+.saved-character-item {
+  width: 100%;
+  text-align: left;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: #fff;
+  padding: 8px 10px;
+  color: var(--ink);
+}
+.saved-character-item:hover { border-color: #b8a8ca; }
+.saved-character-item.active { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(111,63,196,.1); }
+.saved-character-item strong { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.saved-character-meta { display:block; margin-top: 3px; font-size:.7rem; color:var(--muted); }
+.manager-actions { display:flex; gap:6px; margin-top:8px; }
+.manager-actions .mini-button { flex:1; }
+
+@media (max-width: 980px) {
+  .save-status { order: -1; }
+}

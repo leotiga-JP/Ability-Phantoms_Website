@@ -35,7 +35,9 @@
     </div>
 
     <div class="header-actions">
+      <span id="autoSaveStatus" class="save-status" aria-live="polite">● 未保存</span>
       <button class="button secondary" id="newCharacterButton">新規</button>
+      <button class="button secondary" id="clearCharacterButton">入力をクリア</button>
       <button class="button secondary" id="saveJsonButton">JSON保存</button>
       <label class="button secondary file-button">
         JSON読込
@@ -59,9 +61,28 @@
         <button class="nav-button" data-target="cocofoliaSection">ココフォリア</button>
       </nav>
 
+      <!-- =============================================================
+           ブラウザ内キャラクター管理
+           -------------------------------------------------------------
+           localStorageへ複数キャラクターを保存し、同じブラウザで再訪したときに復元します。
+           ここで表示する一覧そのものもlocalStorageへ保存されます。
+           ============================================================= -->
+      <div class="character-manager no-print">
+        <div class="manager-heading">
+          <strong>保存済みキャラクター</strong>
+          <span id="savedCharacterCount" class="badge">0</span>
+        </div>
+        <div id="savedCharactersList" class="saved-character-list"></div>
+        <div class="manager-actions">
+          <button type="button" class="mini-button" id="duplicateCharacterButton">複製</button>
+          <button type="button" class="mini-button" id="deleteCharacterButton">削除</button>
+        </div>
+        <p class="small-note">入力はブラウザ内に自動保存されます。別端末とは共有されません。</p>
+      </div>
+
       <div class="sidebar-note">
         <strong>データはサーバーへ保存されません</strong>
-        <p>JSONを自分で保存しておけば、後から同じキャラクターを完全に復元できます。</p>
+        <p>localStorageに自動保存しつつ、JSON/PDFをバックアップとして保存できます。</p>
       </div>
     </aside>
 
@@ -339,7 +360,7 @@
 
       <!-- PDFとして出力する範囲の終端。 -->
       <section class="footer-note">
-        <p>このツールはブラウザ内で動作します。JSONを保存しておくと、いつでもキャラクターを復元できます。</p>
+        <p>このツールはブラウザ内で動作します。入力は自動保存され、JSON/PDFで外部バックアップできます。</p>
       </section>
     </section>
   </main>
