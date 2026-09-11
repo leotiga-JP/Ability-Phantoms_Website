@@ -1,5 +1,5 @@
 /* =====================================================================
-   異能力怪盗団 キャラクター作成ツール - メインロジック
+   Ability Phantoms キャラクター作成ツール - メインロジック
    ---------------------------------------------------------------------
    このファイルは「データをどう計算するか」「画面へどう表示するか」を担当します。
 
@@ -491,6 +491,8 @@
     element.addEventListener("input", () => {
       setByPath(character, path, element.type === "number" ? numberOrNull(element.value) : element.value);
       refreshComputedOnly();
+      // 第2段階：画面上部を含む全ての data-bind 入力をブラウザへ自動保存します。
+      scheduleLocalSave();
     });
   }
 
@@ -634,7 +636,6 @@
                 <td><strong>${calculateSkillFinalValue(skill)}</strong></td>
                 <td>${skill.isCustom ? `<button type="button" class="remove-button" data-remove-skill="${index}">削除</button>` : ""}</td>
               </tr>
-              ${skill.note ? `<tr><td colspan="8" class="small-note">${escapeHtml(skill.note)}</td></tr>` : ""}
             `).join("")}
           </tbody>
         </table>
@@ -861,6 +862,8 @@
       character.abilities[index][key] = input.value;
     }
     refreshComputedOnly();
+    // 異能力の編集内容も即時に保存予約します。
+    scheduleLocalSave();
     const card = input.closest(".repeat-card");
     if (card) updateAbilityCardTotals(card, character.abilities[index]);
   }
@@ -876,6 +879,8 @@
       input.type === "number" ? numberOrNull(input.value) ?? 0 : input.value;
 
     refreshComputedOnly();
+    // 属性・拡張・制約などの構成要素も保存予約します。
+    scheduleLocalSave();
     const card = input.closest(".repeat-card");
     if (card) updateAbilityCardTotals(card, character.abilities[abilityIndex]);
   }
@@ -976,6 +981,7 @@
 
   // -------------------------------------------------------------------
   // 9. ガジェット/アイテムUI
+  // ガジェット数に上限は設けません。
   // -------------------------------------------------------------------
 
   function addGadget() {
@@ -993,7 +999,7 @@
   }
 
   function renderGadgetsAndItems() {
-    $("#gadgetCount").textContent = `${character.gadgets.length} / 2`;
+    // ガジェットに上限は設けないため、現在の個数だけ表示します。
     $("#gadgetsContainer").innerHTML = character.gadgets.map((item, index) => `
       <article class="repeat-card">
         <div class="card-header">
@@ -1030,6 +1036,8 @@
       input.addEventListener("input", () => {
         const i = Number(input.dataset.index), k = input.dataset.gadgetField;
         character.gadgets[i][k] = input.type === "number" ? numberOrNull(input.value) ?? 0 : input.value;
+        // ガジェット編集内容をlocalStorageへ自動保存します。
+        scheduleLocalSave();
         renderAll(false);
       });
     });
@@ -1038,6 +1046,8 @@
       input.addEventListener("input", () => {
         const i = Number(input.dataset.index), k = input.dataset.itemField;
         character.items[i][k] = input.type === "number" ? numberOrNull(input.value) ?? 0 : input.value;
+        // アイテム編集内容をlocalStorageへ自動保存します。
+        scheduleLocalSave();
         renderAll(false);
       });
     });
@@ -1227,20 +1237,19 @@
     const merged = deepMerge(fresh, data);
 
     // 旧バージョンで「skills」が無い場合は標準技能を再作成。
-    if (!Array.isArray(merged.skills) || merged.skills.length === 0) {
-      merged.skills = createStandardSkills();
-    } else {
-      // ルール更新で標準技能が追加された場合、既存キャラクターにも不足分だけ自動追加します。
-      // 既に存在する技能や、プレイヤーが割り振ったポイントは上書きしません。
-      const existingSourceIds = new Set(
-        merged.skills
-          .filter(skill => !skill.isCustom && skill.sourceId)
-          .map(skill => skill.sourceId)
-      );
+    if (!Array.isArray(merged.skills) || merged.skills.length === 0) merged.skills = createStandardSkills();
 
-      const missingStandardSkills = STANDARD_SKILLS
-        .filter(skill => !existingSourceIds.has(skill.id))
-        .map(skill => ({
+    // data.jsの更新で標準技能が追加された場合でも、既存キャラクターに不足分を自動追加します。
+    // これにより、既存のlocalStorageやJSONを読み込んだ場合でも「幸運」「アピール」などの
+    // 新しい標準技能が追加されます。既存技能の値は変更しません。
+    const existingStandardSourceIds = new Set(
+      merged.skills
+        .filter(skill => !skill.isCustom && skill.sourceId)
+        .map(skill => skill.sourceId)
+    );
+    STANDARD_SKILLS.forEach(skill => {
+      if (!existingStandardSourceIds.has(skill.id)) {
+        merged.skills.push({
           id: uid("skill"),
           sourceId: skill.id,
           isCustom: false,
@@ -1251,13 +1260,11 @@
           occupationPoints: 0,
           freePoints: 0,
           otherModifier: 0,
-          note: skill.note || ""
-        }));
-
-      if (missingStandardSkills.length) {
-        merged.skills.push(...missingStandardSkills);
+          note: ""
+        });
       }
-    }
+    });
+
     if (!Array.isArray(merged.abilities)) merged.abilities = [];
     if (!Array.isArray(merged.gadgets)) merged.gadgets = [];
     if (!Array.isArray(merged.items)) merged.items = [];
