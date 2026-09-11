@@ -1036,9 +1036,10 @@
       input.addEventListener("input", () => {
         const i = Number(input.dataset.index), k = input.dataset.gadgetField;
         character.gadgets[i][k] = input.type === "number" ? numberOrNull(input.value) ?? 0 : input.value;
-        // ガジェット編集内容をlocalStorageへ自動保存します。
-        scheduleLocalSave();
-        renderAll(false);
+        // 入力中に画面全体を再描画すると、input要素自体が作り直されて
+        // フォーカスが外れ、1文字ごとに入力が止まってしまいます。
+        // ここでは再描画せず、データ更新と保存予約だけを行います。
+        markPdfNeedsSaving();
       });
     });
 
@@ -1046,9 +1047,9 @@
       input.addEventListener("input", () => {
         const i = Number(input.dataset.index), k = input.dataset.itemField;
         character.items[i][k] = input.type === "number" ? numberOrNull(input.value) ?? 0 : input.value;
-        // アイテム編集内容をlocalStorageへ自動保存します。
-        scheduleLocalSave();
-        renderAll(false);
+        // アイテムも同様に、入力中の全体再描画を行わず
+        // データ更新と保存予約だけを行います。
+        markPdfNeedsSaving();
       });
     });
 
