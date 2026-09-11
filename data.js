@@ -38,38 +38,10 @@ const STANDARD_SKILLS = [
   { id: "basic_keikaku", name: "計画", category: "基本技能 / 知性系", baseValue: 2, pointCostPerValue: 1 },
 
   // ----- 基本技能：カリスマ系 -----
-  // カリスマ系技能は、交渉・魅了・幸運・アピールの4種類です。
-  // 既存の保存データを読み込んだ場合も、app.js側で不足している標準技能を自動追加します。
-  {
-    id: "basic_kosho",
-    name: "交渉",
-    category: "基本技能 / カリスマ系",
-    baseValue: 2,
-    pointCostPerValue: 1,
-    note: "他者と交渉する技能。論理的に相手を言いくるめたり説得する際に使用する。商談や値切りにも使用できる。"
-  },
-  {
-    id: "basic_miryoku",
-    name: "魅了",
-    category: "基本技能 / カリスマ系",
-    baseValue: 2,
-    pointCostPerValue: 1,
-    note: "他者を魅了する技能。魅惑的な態度で異性・同性問わず誘惑することができる。動物と友好的に接する際にも使用できる。"
-  },
-  {
-    id: "basic_koun",
-    name: "幸運",
-    category: "基本技能 / カリスマ系",
-    baseValue: 2,
-    pointCostPerValue: 1,
-  },
-  {
-    id: "basic_appeal",
-    name: "アピール",
-    category: "基本技能 / カリスマ系",
-    baseValue: 2,
-    pointCostPerValue: 1,
-  },
+  { id: "basic_kosho", name: "交渉", category: "基本技能 / カリスマ系", baseValue: 2, pointCostPerValue: 1 },
+  { id: "basic_miryoku", name: "魅了", category: "基本技能 / カリスマ系", baseValue: 2, pointCostPerValue: 1 },
+  { id: "basic_koun", name: "幸運", category: "基本技能 / カリスマ系", baseValue: 2, pointCostPerValue: 1 },
+  { id: "basic_appeal", name: "アピール", category: "基本技能 / カリスマ系", baseValue: 2, pointCostPerValue: 1 },
 
   // ----- 怪盗系技能 -----
   { id: "thief_hensou", name: "変装", category: "怪盗系技能", baseValue: 4, pointCostPerValue: 1 },
