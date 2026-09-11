@@ -62,7 +62,6 @@ const STANDARD_SKILLS = [
     category: "基本技能 / カリスマ系",
     baseValue: 2,
     pointCostPerValue: 1,
-    note: "キャラクターが幸運に見舞われるかどうかを判別する技能。リロールやチャンスロールの際に消費するポイントとしても扱う。技能値分はシナリオ終了後に回復し、技能値を超える幸運も保持・持ち越し可能。"
   },
   {
     id: "basic_appeal",
@@ -70,7 +69,6 @@ const STANDARD_SKILLS = [
     category: "基本技能 / カリスマ系",
     baseValue: 2,
     pointCostPerValue: 1,
-    note: "自身の怪盗としての名を世に知らしめるのに有効な技能。知名度を手っ取り早く上げたり、怪盗や敵ではないNPC相手に扇動を仕掛けたりできる。"
   },
 
   // ----- 怪盗系技能 -----
