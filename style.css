@@ -690,3 +690,59 @@ textarea { resize: vertical; }
     min-width: 780px;
   }
 }
+
+/* すべての折りたたみ本文は open 時に通常フローで表示します。
+   JS停止時にも summary だけが残らないよう、details本来の挙動を優先します。 */
+.collapse-details[open] > .collapse-body {
+  display: block;
+}
+
+.section-bottom-add {
+  margin-top: 12px;
+}
+
+.ability-summary {
+  gap: 10px;
+  align-items: center;
+}
+
+.ability-summary-name {
+  min-width: 0;
+  flex: 1 1 auto;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  background: transparent;
+  padding: 8px 10px;
+  font: inherit;
+  font-weight: 800;
+  color: var(--ink);
+}
+
+.ability-summary-name:hover,
+.ability-summary-name:focus {
+  border-color: var(--line);
+  background: #fff;
+  outline: none;
+}
+
+.core-checkbox-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  font-size: .84rem;
+  font-weight: 800;
+}
+
+.repeat-card .item-summary,
+.item-subsection > .collapse-summary {
+  min-height: 48px;
+}
+
+@media print {
+  /* exportPdf()側でも全展開しますが、印刷フォールバックでも本文が欠けないようにします。 */
+  details,
+  details[open] {
+    display: block;
+  }
+}

@@ -683,6 +683,11 @@
                 </tbody>
               </table>
             </div>
+            ${isOriginal ? `
+              <div class="inline-actions add-next-row section-bottom-add">
+                <button type="button" class="mini-button" data-add-custom-skill-bottom>＋ 技能を追加</button>
+              </div>
+            ` : ""}
           </div>
         </details>
       `;
@@ -699,15 +704,6 @@
           const valueCell = row.querySelector("td:nth-last-child(2) strong");
           if (valueCell) valueCell.textContent = calculateSkillFinalValue(character.skills[index]);
         });
-      });
-    });
-
-    $$('[data-add-custom-skill]', container).forEach(button => {
-      button.addEventListener("click", event => {
-        // summary内の追加ボタンなので、親details自体の開閉を起こさないようにします。
-        event.preventDefault();
-        event.stopPropagation();
-        addCustomSkill();
       });
     });
 
@@ -906,9 +902,6 @@
       });
     });
 
-    $$('[data-add-ability-inline]', container).forEach(button => {
-      button.addEventListener("click", () => addAbility());
-    });
   }
 
   function renderComponentSection(ability, abilityIndex, collectionKey, label) {
@@ -1108,7 +1101,7 @@
             </details>
           `).join("")}
           <div class="inline-actions add-next-row">
-            <button type="button" class="mini-button" id="addGadgetInlineButton">＋ ガジェットを追加</button>
+            <button type="button" class="mini-button" data-add-gadget-inline>＋ ガジェットを追加</button>
           </div>
         </div>
       </details>
@@ -1138,7 +1131,7 @@
             </details>
           `).join("")}
           <div class="inline-actions add-next-row">
-            <button type="button" class="mini-button" id="addItemInlineButton">＋ アイテムを追加</button>
+            <button type="button" class="mini-button" data-add-item-inline>＋ アイテムを追加</button>
           </div>
         </div>
       </details>
@@ -1197,8 +1190,6 @@
       renderAll();
     }));
 
-    $("#addGadgetInlineButton")?.addEventListener("click", addGadget);
-    $("#addItemInlineButton")?.addEventListener("click", addItem);
   }
 
   // -------------------------------------------------------------------
@@ -1556,22 +1547,19 @@
 
 
   function setupCollapseInteractiveGuards(root = document) {
-    // summary内にあるボタン・入力欄を操作したとき、親detailsが意図せず開閉しないようにします。
-    // data-guard-attachedで二重登録を防ぎます。
+    // summary内の入力欄は「名前を直接編集できる」ことを優先します。
+    // 入力要素にpreventDefault()を掛けるとフォーカスやチェック切替まで阻害するため、
+    // 入力はイベント伝播だけ止め、ボタンだけ明示的にデフォルト動作を止めます。
     $$('summary', root).forEach(summary => {
       if (summary.dataset.guardAttached === "1") return;
       summary.dataset.guardAttached = "1";
 
-      summary.addEventListener("click", event => {
-        const interactive = event.target.closest("button, input, label, select, textarea");
-        if (!interactive) return;
-
-        // summary内のボタンや入力欄をクリックした場合は、親detailsの
-        // 開閉処理を発生させません。以前の「一度開いてから戻す」方式では、
-        // 追加ボタンを押した瞬間に他の表示状態まで変わることがあったため、
-        // 標準のdetails開閉動作をこの場で明示的にキャンセルします。
-        event.preventDefault();
-        event.stopPropagation();
+      $$('button, input, label, select, textarea', summary).forEach(interactive => {
+        interactive.addEventListener("pointerdown", event => event.stopPropagation());
+        interactive.addEventListener("click", event => {
+          event.stopPropagation();
+          if (interactive.matches("button")) event.preventDefault();
+        });
       });
     });
   }
@@ -1646,13 +1634,15 @@
       });
     });
 
-    $("#rollAllStatsButton").addEventListener("click", rollAllStats);
-    $("#addSkillButton").addEventListener("click", addCustomSkill);
-    $("#addAbilityButton").addEventListener("click", addAbility);
-    $("#addGadgetButton").addEventListener("click", addGadget);
-    $("#addItemButton").addEventListener("click", addItem);
+    // 固定IDのボタンは、HTML側のUI調整で存在しない版があっても
+    // 以降のイベント登録全体が止まらないよう、すべてnull-safeにします。
+    $("#rollAllStatsButton")?.addEventListener("click", rollAllStats);
+    $("#addSkillButton")?.addEventListener("click", addCustomSkill);
+    $("#addAbilityButton")?.addEventListener("click", addAbility);
+    $("#addGadgetButton")?.addEventListener("click", addGadget);
+    $("#addItemButton")?.addEventListener("click", addItem);
 
-    $("#newCharacterButton").addEventListener("click", () => {
+    $("#newCharacterButton")?.addEventListener("click", () => {
       if (!confirm("現在の入力内容を破棄して新規キャラクターを作成しますか？\n必要なら先にJSON保存してください。")) return;
       character = createInitialCharacter();
       markPdfNeedsSaving();
@@ -1661,39 +1651,74 @@
       window.scrollTo({ top: 0, behavior: "smooth" });
     });
 
-    $("#clearCharacterButton").addEventListener("click", clearCurrentCharacter);
-    $("#duplicateCharacterButton").addEventListener("click", duplicateCurrentCharacter);
-    $("#deleteCharacterButton").addEventListener("click", deleteCurrentCharacter);
+    $("#clearCharacterButton")?.addEventListener("click", clearCurrentCharacter);
+    $("#duplicateCharacterButton")?.addEventListener("click", duplicateCurrentCharacter);
+    $("#deleteCharacterButton")?.addEventListener("click", deleteCurrentCharacter);
 
-    $("#saveJsonButton").addEventListener("click", exportCharacterJson);
-    $("#loadJsonInput").addEventListener("change", event => {
+    $("#saveJsonButton")?.addEventListener("click", exportCharacterJson);
+    $("#loadJsonInput")?.addEventListener("change", event => {
       const file = event.target.files?.[0];
       if (file) handleJsonFile(file);
       event.target.value = "";
     });
 
-    $("#pdfButton").addEventListener("click", exportPdf);
+    $("#pdfButton")?.addEventListener("click", exportPdf);
 
     // 立ち絵・差分アップロード。
-    $("#portraitUploadInput").addEventListener("change", event => {
+    $("#portraitUploadInput")?.addEventListener("change", event => {
       const file = event.target.files?.[0];
       if (file) handlePortraitUpload(file);
       event.target.value = "";
     });
-    $("#removePortraitButton").addEventListener("click", removeActivePortrait);
+    $("#removePortraitButton")?.addEventListener("click", removeActivePortrait);
 
-    $("#cocofoliaButton").addEventListener("click", () => {
+    $("#cocofoliaButton")?.addEventListener("click", () => {
       const json = JSON.stringify(buildCocofoliaData(), null, 2);
       downloadBlob(json, `${sanitizeFilename(character.profile.name)}.cocofolia.json`, "application/json;charset=utf-8");
     });
 
-    $("#copyCocofoliaButton").addEventListener("click", async () => {
+    $("#copyCocofoliaButton")?.addEventListener("click", async () => {
       const json = JSON.stringify(buildCocofoliaData(), null, 2);
       try {
         await navigator.clipboard.writeText(json);
         alert("ココフォリアJSONをクリップボードへコピーしました。");
       } catch {
         prompt("コピーできない場合は、以下を手動でコピーしてください。", json);
+      }
+    });
+
+    // 動的に描画される「追加」ボタンはイベント委譲で処理します。
+    // これにより再描画してもボタンが無効にならず、古いHTMLに存在しない固定IDにも依存しません。
+    document.addEventListener("click", event => {
+      const customSkillButton = event.target.closest("[data-add-custom-skill], [data-add-custom-skill-bottom]");
+      if (customSkillButton) {
+        event.preventDefault();
+        event.stopPropagation();
+        addCustomSkill();
+        return;
+      }
+
+      const abilityButton = event.target.closest("[data-add-ability-inline], [data-add-ability-bottom]");
+      if (abilityButton) {
+        event.preventDefault();
+        event.stopPropagation();
+        addAbility();
+        return;
+      }
+
+      const gadgetButton = event.target.closest("[data-add-gadget-inline], #addGadgetInlineButton");
+      if (gadgetButton) {
+        event.preventDefault();
+        event.stopPropagation();
+        addGadget();
+        return;
+      }
+
+      const itemButton = event.target.closest("[data-add-item-inline], #addItemInlineButton");
+      if (itemButton) {
+        event.preventDefault();
+        event.stopPropagation();
+        addItem();
       }
     });
 
