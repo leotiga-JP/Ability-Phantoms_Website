@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="Ability Phantoms キャラクター作成支援ツール" />
+  <meta name="description" content="異能力怪盗団 キャラクター作成支援ツール（Ability Phantoms）" />
   <title>異能力怪盗団 キャラクター作成ツール</title>
 
   <!--
@@ -11,7 +11,7 @@
     JavaScriptとは分離しているため、色や余白、文字サイズなどを変更したい場合は
     style.cssを編集してください。
   -->
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="style.css?v=stage3-3" />
 
   <!--
     PDF出力用ライブラリ。
@@ -22,11 +22,15 @@
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
   <!-- 標準技能などの編集しやすいマスターデータ。 -->
-  <script defer src="data.js"></script>
+  <script defer src="data.js?v=stage3-3"></script>
   <!-- 本体ロジック。最後に読み込むことで、data.jsの内容を利用できます。 -->
-  <script defer src="app.js"></script>
+  <script defer src="app.js?v=stage3-3"></script>
 </head>
 <body>
+  <!--
+    折りたたみUIは <details> / <summary> を基本にしています。
+    data-collapse-id は再描画後も開閉状態を維持するための内部識別子です。
+  -->
   <header class="app-header no-print">
     <div>
       <p class="eyebrow">Ability Phantoms</p>
@@ -167,232 +171,235 @@
 
       <!-- =============================================================
            2. 能力値
-           -------------------------------------------------------------
-           details/summaryを使った折りたたみ式。
-           初期状態は開いていますが、ユーザーが自由に閉じられます。
-           PDF出力時はJavaScript側ですべて強制的に開きます。
+           標準ルールのダイス式を初期設定として利用しつつ、最終値は
+           プレイヤーが自由に直接編集できるようにしています。
            ============================================================= -->
-      <details class="sheet-section collapsible-section" id="statsSection" open>
-        <summary class="collapsible-summary">
-          <span class="section-title-wrap">
-            <span class="section-number">02</span>
-            <span class="section-title-text">能力値</span>
-          </span>
-          <span class="collapse-hint">クリックで開閉</span>
-        </summary>
-        <div class="section-content">
-          <div class="section-heading section-heading-inner">
-            <p>標準ルールのダイス式を初期設定として利用しつつ、最終値はプレイヤーが自由に直接編集できます。</p>
-            <button class="button" id="rollAllStatsButton">🎲 全能力値を振る</button>
-          </div>
+      <section class="sheet-section" id="statsSection">
+        <details class="section-details collapse-details" data-collapse-id="statsSection" open>
+          <summary class="section-summary">
+            <div>
+              <p class="section-number">02</p>
+              <h2>能力値</h2>
+            </div>
+            <span class="summary-chevron" aria-hidden="true">⌄</span>
+          </summary>
 
-          <div class="stats-grid" id="statsGrid"></div>
+          <div class="collapse-body">
+            <div class="section-heading section-heading-inner">
+              <p>標準ルールのダイス式を初期設定として利用しつつ、最終値はプレイヤーが自由に直接編集できます。</p>
+              <button class="button" id="rollAllStatsButton">🎲 全能力値を振る</button>
+            </div>
 
-          <div class="derived-grid">
-            <div class="metric-card">
-              <span>HP</span>
-              <div class="metric-row">
-                <span class="metric-formula">身体 + カリスマ + 3</span>
-                <input data-bind="derived.hpOverride" type="number" />
+            <div class="stats-grid" id="statsGrid"></div>
+
+            <div class="derived-grid">
+              <div class="metric-card">
+                <span>HP</span>
+                <div class="metric-row">
+                  <span class="metric-formula">身体 + カリスマ + 3</span>
+                  <input data-bind="derived.hpOverride" type="number" />
+                </div>
               </div>
-            </div>
-            <div class="metric-card">
-              <span>PP</span>
-              <div class="metric-row">
-                <span class="metric-formula">精神 + 6</span>
-                <input data-bind="derived.ppOverride" type="number" />
+              <div class="metric-card">
+                <span>PP</span>
+                <div class="metric-row">
+                  <span class="metric-formula">精神 + 6</span>
+                  <input data-bind="derived.ppOverride" type="number" />
+                </div>
               </div>
-            </div>
-            <div class="metric-card">
-              <span>イニシアチブ</span>
-              <div class="metric-row">
-                <span class="metric-formula">ceil((身体 + 知性) / 2)</span>
-                <input data-bind="derived.initiativeOverride" type="number" />
+              <div class="metric-card">
+                <span>イニシアチブ</span>
+                <div class="metric-row">
+                  <span class="metric-formula">ceil((身体 + 知性) / 2)</span>
+                  <input data-bind="derived.initiativeOverride" type="number" />
+                </div>
               </div>
-            </div>
-            <div class="metric-card critical-card">
-              <span>クリティカル値</span>
-              <div class="metric-row">
-                <!-- クリティカル値は完全手動入力。自動計算しません。 -->
-                <input data-bind="derived.criticalValue" type="number" min="1" max="6" placeholder="1〜6" />
+              <div class="metric-card critical-card">
+                <span>クリティカル値</span>
+                <div class="metric-row">
+                  <input data-bind="derived.criticalValue" type="number" min="1" max="6" placeholder="1〜6" />
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      </details>
+        </details>
+      </section>
 
       <!-- =============================================================
            3. ポイント
+           「基本値」はルールブックから自動算出し、「その他」は手入力で補正できます。
+           使用済みは技能・異能力などの入力から自動集計し、残りを算出します。
            ============================================================= -->
-      <details class="sheet-section collapsible-section" id="pointsSection" open>
-        <summary class="collapsible-summary">
-          <span class="section-title-wrap">
-            <span class="section-number">03</span>
-            <span class="section-title-text">ポイント管理</span>
-          </span>
-          <span class="collapse-hint">クリックで開閉</span>
-        </summary>
-        <div class="section-content">
-          <p class="section-description">「基本値」はルールブックから自動算出し、「その他」は手入力で補正できます。使用済みは技能・異能力などの入力から自動集計します。</p>
-          <div class="points-grid" id="pointsGrid"></div>
-        </div>
-      </details>
+      <section class="sheet-section" id="pointsSection">
+        <details class="section-details collapse-details" data-collapse-id="pointsSection" open>
+          <summary class="section-summary">
+            <div>
+              <p class="section-number">03</p>
+              <h2>ポイント管理</h2>
+            </div>
+            <span class="summary-chevron" aria-hidden="true">⌄</span>
+          </summary>
+          <div class="collapse-body">
+            <p class="section-description">追加ポイントは「その他」に入力してください。</p>
+            <div class="points-grid" id="pointsGrid"></div>
+          </div>
+        </details>
+      </section>
 
       <!-- =============================================================
            4. 技能
-           -------------------------------------------------------------
-           技能全体を外側で折りたたみ、さらに系統別のdetailsを
-           内側へ配置します。職業専門技能も独立したグループになります。
+           標準技能はdata.jsから読み込みます。
+           「＋ 技能を追加」でオリジナル技能を何行でも追加できます。
            ============================================================= -->
-      <details class="sheet-section collapsible-section" id="skillsSection" open>
-        <summary class="collapsible-summary">
-          <span class="section-title-wrap">
-            <span class="section-number">04</span>
-            <span class="section-title-text">技能</span>
-          </span>
-          <span class="collapse-hint">クリックで開閉</span>
-        </summary>
-        <div class="section-content">
-          <div class="section-heading section-heading-inner">
-            <p>技能全体を閉じたままにしたり、系統ごとに個別に折りたためます。</p>
-            <button class="button" id="addSkillButton">＋ 技能を追加</button>
+      <section class="sheet-section" id="skillsSection">
+        <details class="section-details collapse-details" data-collapse-id="skillsSection" open>
+          <summary class="section-summary">
+            <div>
+              <p class="section-number">04</p>
+              <h2>技能</h2>
+            </div>
+            <div class="section-summary-actions">
+              <button class="button secondary" id="addSkillButton">＋ 技能を追加</button>
+              <span class="summary-chevron" aria-hidden="true">⌄</span>
+            </div>
+          </summary>
+          <div class="collapse-body">
+            <div id="skillsContainer"></div>
           </div>
-          <div id="skillsContainer"></div>
-        </div>
-      </details>
+        </details>
+      </section>
 
       <!-- =============================================================
            5. 異能力
-           -------------------------------------------------------------
-           異能力全体 → 個々の異能力 → 属性/拡張/制約
-           という3段階で折りたためるようにします。
+           属性・拡張・制約はプレイヤーが自由入力します。
+           それぞれの取得/使用コストを入力し、異能力単位で自動計算します。
            ============================================================= -->
-      <details class="sheet-section collapsible-section" id="abilitiesSection" open>
-        <summary class="collapsible-summary">
-          <span class="section-title-wrap">
-            <span class="section-number">05</span>
-            <span class="section-title-text">異能力</span>
-          </span>
-          <span class="collapse-hint">クリックで開閉</span>
-        </summary>
-        <div class="section-content">
-          <div class="section-heading section-heading-inner">
-            <p>異能力ごとにさらに折りたためます。</p>
-            <button class="button" id="addAbilityButton">＋ 異能力を追加</button>
+      <section class="sheet-section" id="abilitiesSection">
+        <details class="section-details collapse-details" data-collapse-id="abilitiesSection" open>
+          <summary class="section-summary">
+            <div>
+              <p class="section-number">05</p>
+              <h2>異能力</h2>
+            </div>
+            <span class="summary-chevron" aria-hidden="true">⌄</span>
+          </summary>
+          <div class="collapse-body">
+            <div id="abilitiesContainer"></div>
+            <div class="inline-actions add-next-row section-bottom-add">
+              <button class="button" id="addAbilityButton">＋ 異能力を追加</button>
+            </div>
           </div>
-          <div id="abilitiesContainer"></div>
-        </div>
-      </details>
+        </details>
+      </section>
 
       <!-- =============================================================
            6. 所持品
-           -------------------------------------------------------------
-           所持品全体 → ガジェット/アイテム → 個別項目
-           の順に入れ子で折りたためます。
-           ガジェット数に上限はありません。
+           ガジェット数に上限は設けません。個数表示や上限警告も行いません。
            ============================================================= -->
-      <details class="sheet-section collapsible-section" id="itemsSection" open>
-        <summary class="collapsible-summary">
-          <span class="section-title-wrap">
-            <span class="section-number">06</span>
-            <span class="section-title-text">ガジェット・アイテム</span>
-          </span>
-          <span class="collapse-hint">クリックで開閉</span>
-        </summary>
-        <div class="section-content">
-          <div class="section-heading section-heading-inner">
-            <p>ガジェットとアイテムをそれぞれ独立して折りたためます。</p>
-            <div class="inline-actions">
-              <button class="button secondary" id="addGadgetButton">＋ ガジェット</button>
-              <button class="button secondary" id="addItemButton">＋ アイテム</button>
+      <section class="sheet-section" id="itemsSection">
+        <details class="section-details collapse-details" data-collapse-id="itemsSection" open>
+          <summary class="section-summary">
+            <div>
+              <p class="section-number">06</p>
+              <h2>ガジェット・アイテム</h2>
             </div>
+            <span class="summary-chevron" aria-hidden="true">⌄</span>
+          </summary>
+          <div class="collapse-body">
+            <div id="gadgetsContainer"></div>
+            <div id="itemsContainer"></div>
           </div>
-          <div id="gadgetsContainer"></div>
-          <div id="itemsContainer"></div>
-        </div>
-      </details>
+        </details>
+      </section>
 
       <!-- =============================================================
            7. 設定・メモ
-           -------------------------------------------------------------
-           設定全体 → 外見/性格/経歴/その他メモを個別に折りたためます。
            ============================================================= -->
-      <details class="sheet-section collapsible-section" id="notesSection" open>
-        <summary class="collapsible-summary">
-          <span class="section-title-wrap">
-            <span class="section-number">07</span>
-            <span class="section-title-text">設定・メモ</span>
-          </span>
-          <span class="collapse-hint">クリックで開閉</span>
-        </summary>
-        <div class="section-content">
-          <div class="nested-details-grid">
-            <details class="nested-details" open>
-              <summary>外見</summary>
-              <div class="nested-details-body">
-                <textarea data-bind="profile.appearance" rows="6" placeholder="外見の設定を入力"></textarea>
+      <section class="sheet-section" id="notesSection">
+        <details class="section-details collapse-details" data-collapse-id="notesSection" open>
+          <summary class="section-summary">
+            <div>
+              <p class="section-number">07</p>
+              <h2>設定・メモ</h2>
+            </div>
+            <span class="summary-chevron" aria-hidden="true">⌄</span>
+          </summary>
+          <div class="collapse-body notes-collapse-grid">
+            <details class="nested-text-details collapse-details" data-collapse-id="notes-appearance" open>
+              <summary class="collapse-summary"><span class="collapse-summary-title">外見</span></summary>
+              <div class="collapse-body">
+                <textarea data-bind="profile.appearance" rows="6" placeholder="外見の特徴、服装、印象など"></textarea>
               </div>
             </details>
-            <details class="nested-details" open>
-              <summary>性格</summary>
-              <div class="nested-details-body">
-                <textarea data-bind="profile.personality" rows="6" placeholder="性格の設定を入力"></textarea>
+            <details class="nested-text-details collapse-details" data-collapse-id="notes-personality" open>
+              <summary class="collapse-summary"><span class="collapse-summary-title">性格</span></summary>
+              <div class="collapse-body">
+                <textarea data-bind="profile.personality" rows="6" placeholder="性格、口調、行動傾向など"></textarea>
               </div>
             </details>
-            <details class="nested-details" open>
-              <summary>経歴</summary>
-              <div class="nested-details-body">
-                <textarea data-bind="notes.background" rows="8" placeholder="経歴を入力"></textarea>
+            <details class="nested-text-details collapse-details" data-collapse-id="notes-background" open>
+              <summary class="collapse-summary"><span class="collapse-summary-title">経歴</span></summary>
+              <div class="collapse-body">
+                <textarea data-bind="notes.background" rows="8" placeholder="キャラクターの経歴や過去"></textarea>
               </div>
             </details>
-            <details class="nested-details" open>
-              <summary>その他メモ</summary>
-              <div class="nested-details-body">
-                <textarea data-bind="notes.memo" rows="8" placeholder="その他のメモを入力"></textarea>
+            <details class="nested-text-details collapse-details" data-collapse-id="notes-memo" open>
+              <summary class="collapse-summary"><span class="collapse-summary-title">その他メモ</span></summary>
+              <div class="collapse-body">
+                <textarea data-bind="notes.memo" rows="8" placeholder="自由記述"></textarea>
               </div>
             </details>
           </div>
-        </div>
-      </details>
+        </details>
+      </section>
 
       <!-- =============================================================
            8. ココフォリア出力設定
+           現在の公式ドキュメントで案内されているstatus/params/commandsの考え方に
+           合わせ、ユーザーが出力先のラベル等も編集できるようにします。
            ============================================================= -->
-      <details class="sheet-section collapsible-section" id="cocofoliaSection" open>
-        <summary class="collapsible-summary">
-          <span class="section-title-wrap">
-            <span class="section-number">08</span>
-            <span class="section-title-text">ココフォリア出力</span>
-          </span>
-          <span class="collapse-hint">クリックで開閉</span>
-        </summary>
-        <div class="section-content">
-          <div class="form-grid two-column">
-            <label class="field wide">
-              <span>コマ画像URL</span>
-              <input data-bind="cocofolia.iconUrl" type="url" placeholder="https://..." />
-            </label>
-            <label class="field wide">
-              <span>キャラクターシート等の外部URL</span>
-              <input data-bind="cocofolia.externalUrl" type="url" placeholder="https://..." />
-            </label>
+      <section class="sheet-section" id="cocofoliaSection">
+        <details class="section-details collapse-details" data-collapse-id="cocofoliaSection" open>
+          <summary class="section-summary">
+            <div>
+              <p class="section-number">08</p>
+              <h2>ココフォリア出力</h2>
+            </div>
+            <span class="summary-chevron" aria-hidden="true">⌄</span>
+          </summary>
+          <div class="collapse-body">
+            <div class="section-heading section-heading-inner">
+              <p>ココフォリア用JSONの設定とチャットパレットを編集できます。</p>
+              <button class="button accent" id="copyCocofoliaButton">JSONをコピー</button>
+            </div>
+
+            <div class="form-grid two-column">
+              <label class="field wide">
+                <span>コマ画像URL</span>
+                <input data-bind="cocofolia.iconUrl" type="url" placeholder="https://..." />
+              </label>
+              <label class="field wide">
+                <span>キャラクターシート等の外部URL</span>
+                <input data-bind="cocofolia.externalUrl" type="url" placeholder="https://..." />
+              </label>
+              <label class="field">
+                <span>コマカラー</span>
+                <input data-bind="cocofolia.color" type="text" value="#7c3aed" />
+              </label>
+            </div>
+
             <label class="field">
-              <span>コマカラー</span>
-              <input data-bind="cocofolia.color" type="text" value="#7c3aed" />
+              <span>チャットパレット（1行1コマンド）</span>
+              <textarea data-bind="cocofolia.commands" id="cocofoliaCommands" rows="12"></textarea>
             </label>
+
+            <details class="json-preview nested-text-details collapse-details" data-collapse-id="cocofolia-json-preview">
+              <summary>現在のココフォリアJSONを表示</summary>
+              <pre id="cocofoliaPreview"></pre>
+            </details>
           </div>
-
-          <label class="field">
-            <span>チャットパレット（1行1コマンド）</span>
-            <textarea data-bind="cocofolia.commands" id="cocofoliaCommands" rows="12"></textarea>
-          </label>
-
-          <details class="json-preview" open>
-            <summary>現在のココフォリアJSONを表示</summary>
-            <pre id="cocofoliaPreview"></pre>
-          </details>
-        </div>
-      </details>
+        </details>
+      </section>
 
       <!-- PDFとして出力する範囲の終端。 -->
       <section class="footer-note">

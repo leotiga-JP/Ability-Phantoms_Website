@@ -548,7 +548,8 @@
     $$('[data-stat-key]', grid).forEach(input => {
       input.addEventListener("input", () => {
         character.stats[input.dataset.statKey] = numberOrNull(input.value) ?? 0;
-        renderAll(false);
+        refreshComputedOnly();
+        markPdfNeedsSaving();
       });
     });
 
@@ -572,24 +573,29 @@
       { key: "free", label: "フリーポイント", otherPath: "pointPools.freeOther", description: "技能・異能力などへ使用" }
     ];
 
+    // ポイント管理も、全体を開閉でき、さらに各ポイント種別を個別に開閉できます。
     $("#pointsGrid").innerHTML = definitions.map(def => {
       const pool = pools[def.key];
       return `
-        <article class="point-card">
-          <h3>${def.label}</h3>
-          <p class="small-note">${def.description}</p>
-          <div class="point-numbers">
-            <div class="point-number"><small>基本値</small><strong>${pool.base}</strong></div>
-            <div class="point-number"><small>その他</small><strong>${pool.other >= 0 ? "+" : ""}${pool.other}</strong></div>
-            <div class="point-number"><small>合計</small><strong>${pool.total}</strong></div>
-            <div class="point-number"><small>使用</small><strong>${pool.used}</strong></div>
-            <div class="point-number"><small>残り</small><strong>${pool.remaining}</strong></div>
+        <details class="point-card collapse-details" data-collapse-id="point-${def.key}" open>
+          <summary class="collapse-summary">
+            <span class="collapse-summary-title">${def.label}</span>
+          </summary>
+          <div class="collapse-body">
+            <p class="small-note">${def.description}</p>
+            <div class="point-numbers">
+              <div class="point-number"><small>基本値</small><strong>${pool.base}</strong></div>
+              <div class="point-number"><small>その他</small><strong>${pool.other >= 0 ? "+" : ""}${pool.other}</strong></div>
+              <div class="point-number"><small>合計</small><strong>${pool.total}</strong></div>
+              <div class="point-number"><small>使用</small><strong>${pool.used}</strong></div>
+              <div class="point-number"><small>残り</small><strong>${pool.remaining}</strong></div>
+            </div>
+            <label class="field point-input">
+              <span>その他ポイント（手入力）</span>
+              <input type="number" data-bind="${def.otherPath}" value="${pool.other}" />
+            </label>
           </div>
-          <label class="field point-input">
-            <span>その他ポイント（手入力）</span>
-            <input type="number" data-bind="${def.otherPath}" value="${pool.other}" />
-          </label>
-        </article>
+        </details>
       `;
     }).join("");
 
@@ -608,13 +614,16 @@
       grouped.get(skill.category).push({ skill, index });
     });
 
-    // 技能全体の中を「身体系」「器用系」「感覚系」などの
-    // 系統別detailsに分けます。detailsなので、ユーザーが各系統を個別に開閉できます。
-    container.innerHTML = [...grouped.entries()].map(([category, rows]) => `
-      <details class="skill-group nested-details" open>
-        <summary>${escapeHtml(category)}</summary>
-        <div class="nested-details-body skill-group-body">
-          <div class="table-scroll-wrapper">
+    // 技能は系統ごとに折りたためるようにします。
+    // 「オリジナル技能」グループには、一覧のすぐ横で追加できるボタンを置きます。
+    container.innerHTML = [...grouped.entries()].map(([category, rows], groupIndex) => `
+      <details class="skill-group collapse-details" data-collapse-id="skill-group-${groupIndex}-${escapeHtml(category)}" open>
+        <summary class="collapse-summary skill-group-summary">
+          <span class="collapse-summary-title">${escapeHtml(category)}</span>
+          ${category === "オリジナル技能" ? `<button type="button" class="mini-button summary-add-button" data-add-custom-skill>＋ 技能を追加</button>` : ""}
+        </summary>
+        <div class="collapse-body skill-group-body">
+          <div class="table-scroll">
             <table class="skill-table">
               <thead>
                 <tr>
@@ -655,9 +664,19 @@
           const key = input.dataset.skillField;
           character.skills[index][key] = input.type === "number" ? numberOrNull(input.value) ?? 0 : input.value;
           refreshComputedOnly();
+          scheduleLocalSave();
           const valueCell = row.querySelector("td:nth-last-child(2) strong");
           if (valueCell) valueCell.textContent = calculateSkillFinalValue(character.skills[index]);
         });
+      });
+    });
+
+    $$('[data-add-custom-skill]', container).forEach(button => {
+      button.addEventListener("click", event => {
+        // summary内の追加ボタンなので、親detailsの開閉を起こさないようにします。
+        event.preventDefault();
+        event.stopPropagation();
+        addCustomSkill();
       });
     });
 
@@ -725,23 +744,27 @@
     const container = $("#abilitiesContainer");
     container.innerHTML = character.abilities.map((ability, index) => {
       const totals = calculateAbilityTotals(ability);
+      const collapseId = `ability-${ability.id || index}`;
       return `
-        <details class="repeat-card ability-fold" open>
-          <summary class="ability-summary">
-            <span class="card-title">異能力 #${index + 1}：${escapeHtml(ability.name || "新しい異能力")}</span>
-            <span class="collapse-hint">クリックで開閉</span>
+        <details class="repeat-card collapse-details ability-card" data-collapse-id="${escapeHtml(collapseId)}" open>
+          <summary class="collapse-summary ability-summary">
+            <input
+              type="text"
+              class="ability-summary-name"
+              data-ability-field="name"
+              data-index="${index}"
+              value="${escapeHtml(ability.name)}"
+              aria-label="異能力名"
+            />
+            <label class="core-checkbox-wrap" title="コア異能力">
+              <input type="checkbox" data-ability-field="isCore" data-index="${index}" ${ability.isCore ? "checked" : ""} />
+              <span>コア</span>
+            </label>
+            <button type="button" class="remove-button" data-remove-ability="${index}">削除</button>
           </summary>
 
-          <div class="card-body">
-            <div class="ability-card-actions no-print">
-              <button type="button" class="remove-button" data-remove-ability="${index}">異能力を削除</button>
-            </div>
-
+          <div class="collapse-body card-body">
             <div class="form-grid two-column">
-              <label class="field">
-                <span>異能力名</span>
-                <input type="text" data-ability-field="name" data-index="${index}" value="${escapeHtml(ability.name)}" />
-              </label>
               <label class="field">
                 <span>異能力レベル</span>
                 <input type="number" min="0" data-ability-field="level" data-index="${index}" value="${escapeHtml(ability.level)}" />
@@ -766,10 +789,6 @@
                 <span>異能力のルーツ</span>
                 <input type="text" data-ability-field="origin" data-index="${index}" value="${escapeHtml(ability.origin)}" placeholder="自由入力" />
               </label>
-              <label class="field" style="display:flex;align-items:end;gap:8px;">
-                <input type="checkbox" data-ability-field="isCore" data-index="${index}" ${ability.isCore ? "checked" : ""} />
-                <span>コア異能力</span>
-              </label>
               <label class="field wide">
                 <span>異能力の詳細</span>
                 <textarea rows="4" data-ability-field="description" data-index="${index}">${escapeHtml(ability.description)}</textarea>
@@ -786,19 +805,40 @@
               <div class="total-chip"><small>コア</small><strong>${ability.isCore ? "YES" : "NO"}</strong></div>
               <div class="total-chip"><small>所持数カウント</small><strong>1</strong></div>
             </div>
+
+            <!-- 長い異能力を続けて作成できるよう、カード下部にも追加ボタンを配置します。 -->
+            <div class="inline-actions add-next-row">
+              <button type="button" class="button secondary" data-add-ability-inline>＋ 異能力を追加</button>
+            </div>
           </div>
         </details>
       `;
     }).join("");
 
-    // 異能力本体の入力イベント。
+    // 異能力カード内の入力。
     $$('[data-ability-field]', container).forEach(input => {
       input.addEventListener("input", handleAbilityFieldInput);
       input.addEventListener("change", handleAbilityFieldInput);
     });
 
+    // summaryに配置した「コア」「異能力名」「削除」操作では、
+    // 操作時にdetailsが意図せず開閉しないよう、元の開閉状態へ戻します。
+    $$('.ability-summary', container).forEach(summary => {
+      summary.addEventListener("click", event => {
+        if (!event.target.closest("input, button, label")) return;
+        event.stopPropagation();
+        const details = summary.closest("details");
+        const wasOpen = details?.open ?? true;
+        window.setTimeout(() => {
+          if (details) details.open = wasOpen;
+        }, 0);
+      });
+    });
+
     $$('[data-remove-ability]', container).forEach(button => {
-      button.addEventListener("click", () => {
+      button.addEventListener("click", event => {
+        event.preventDefault();
+        event.stopPropagation();
         character.abilities.splice(Number(button.dataset.removeAbility), 1);
         markPdfNeedsSaving();
         renderAll();
@@ -811,7 +851,9 @@
     });
 
     $$('[data-add-component]', container).forEach(button => {
-      button.addEventListener("click", () => {
+      button.addEventListener("click", event => {
+        event.preventDefault();
+        event.stopPropagation();
         const ability = character.abilities[Number(button.dataset.abilityIndex)];
         ability[button.dataset.addComponent].push(defaultComponent());
         markPdfNeedsSaving();
@@ -820,7 +862,9 @@
     });
 
     $$('[data-remove-component]', container).forEach(button => {
-      button.addEventListener("click", () => {
+      button.addEventListener("click", event => {
+        event.preventDefault();
+        event.stopPropagation();
         const ability = character.abilities[Number(button.dataset.abilityIndex)];
         const collection = ability[button.dataset.collection];
         collection.splice(Number(button.dataset.componentIndex), 1);
@@ -828,17 +872,21 @@
         renderAll();
       });
     });
+
+    $$('[data-add-ability-inline]', container).forEach(button => {
+      button.addEventListener("click", () => addAbility());
+    });
   }
 
   function renderComponentSection(ability, abilityIndex, collectionKey, label) {
+    const abilityId = ability.id || abilityIndex;
     return `
-      <details class="component-section nested-details" open>
-        <summary>${label}</summary>
-        <div class="nested-details-body">
-          <div class="component-section-header">
-            <strong>${label}</strong>
-            <button type="button" class="mini-button" data-add-component="${collectionKey}" data-ability-index="${abilityIndex}">＋ 追加</button>
-          </div>
+      <details class="component-section collapse-details" data-collapse-id="component-${abilityId}-${collectionKey}" open>
+        <summary class="collapse-summary component-section-summary">
+          <span class="collapse-summary-title">${label}</span>
+          <button type="button" class="mini-button summary-add-button" data-add-component="${collectionKey}" data-ability-index="${abilityIndex}">＋ 追加</button>
+        </summary>
+        <div class="collapse-body">
           <div class="ability-component-list">
             ${(ability[collectionKey] || []).map((component, index) => `
               <div class="component-row">
@@ -1005,49 +1053,47 @@
   }
 
   function renderGadgetsAndItems() {
-    // ガジェットとアイテムをそれぞれ独立したdetailsとして表示します。
-    // ガジェット数には上限を設けません。
-    const gadgetsContainer = $("#gadgetsContainer");
-    const itemsContainer = $("#itemsContainer");
-
-    gadgetsContainer.innerHTML = `
-      <details class="nested-details" open>
-        <summary>ガジェット</summary>
-        <div class="nested-details-body">
+    // ガジェットに上限は設けません。
+    // ガジェットとアイテムを別々に折りたたみ、その中の各項目も個別に折りたためます。
+    $("#gadgetsContainer").innerHTML = `
+      <details class="item-subsection collapse-details" data-collapse-id="gadget-list" open>
+        <summary class="collapse-summary">
+          <span class="collapse-summary-title">ガジェット</span>
+        </summary>
+        <div class="collapse-body">
           ${character.gadgets.map((item, index) => `
-            <details class="repeat-card item-fold" open>
-              <summary class="item-summary">
-                <span>${escapeHtml(item.name || `ガジェット #${index + 1}`)}</span>
-                <span class="collapse-hint">クリックで開閉</span>
+            <details class="repeat-card collapse-details item-card" data-collapse-id="gadget-${item.id || index}" open>
+              <summary class="collapse-summary item-summary">
+                <span class="collapse-summary-title">${escapeHtml(item.name || `ガジェット #${index + 1}`)}</span>
+                <button type="button" class="remove-button" data-remove-gadget="${index}">削除</button>
               </summary>
-              <div class="card-body form-grid two-column">
-                <div class="wide inline-actions no-print" style="justify-content:flex-end;">
-                  <button type="button" class="remove-button" data-remove-gadget="${index}">削除</button>
-                </div>
+              <div class="collapse-body card-body form-grid two-column">
                 <label class="field"><span>名称</span><input data-gadget-field="name" data-index="${index}" value="${escapeHtml(item.name)}" /></label>
                 <label class="field"><span>数量</span><input type="number" min="1" data-gadget-field="quantity" data-index="${index}" value="${escapeHtml(item.quantity)}" /></label>
                 <label class="field wide"><span>説明</span><textarea rows="3" data-gadget-field="description" data-index="${index}">${escapeHtml(item.description)}</textarea></label>
               </div>
             </details>
           `).join("")}
+          <div class="inline-actions add-next-row">
+            <button type="button" class="button secondary" id="addGadgetInlineButton">＋ ガジェットを追加</button>
+          </div>
         </div>
       </details>
     `;
 
-    itemsContainer.innerHTML = `
-      <details class="nested-details" open>
-        <summary>アイテム</summary>
-        <div class="nested-details-body">
+    $("#itemsContainer").innerHTML = `
+      <details class="item-subsection collapse-details" data-collapse-id="item-list" open>
+        <summary class="collapse-summary">
+          <span class="collapse-summary-title">アイテム</span>
+        </summary>
+        <div class="collapse-body">
           ${character.items.map((item, index) => `
-            <details class="repeat-card item-fold" open>
-              <summary class="item-summary">
-                <span>${escapeHtml(item.name || `アイテム #${index + 1}`)}</span>
-                <span class="collapse-hint">クリックで開閉</span>
+            <details class="repeat-card collapse-details item-card" data-collapse-id="item-${item.id || index}" open>
+              <summary class="collapse-summary item-summary">
+                <span class="collapse-summary-title">${escapeHtml(item.name || `アイテム #${index + 1}`)}</span>
+                <button type="button" class="remove-button" data-remove-item="${index}">削除</button>
               </summary>
-              <div class="card-body form-grid two-column">
-                <div class="wide inline-actions no-print" style="justify-content:flex-end;">
-                  <button type="button" class="remove-button" data-remove-item="${index}">削除</button>
-                </div>
+              <div class="collapse-body card-body form-grid two-column">
                 <label class="field"><span>名称</span><input data-item-field="name" data-index="${index}" value="${escapeHtml(item.name)}" /></label>
                 <label class="field"><span>カテゴリ</span><input data-item-field="category" data-index="${index}" value="${escapeHtml(item.category)}" /></label>
                 <label class="field"><span>使用技能</span><input data-item-field="skill" data-index="${index}" value="${escapeHtml(item.skill)}" /></label>
@@ -1058,15 +1104,34 @@
               </div>
             </details>
           `).join("")}
+          <div class="inline-actions add-next-row">
+            <button type="button" class="button secondary" id="addItemInlineButton">＋ アイテムを追加</button>
+          </div>
         </div>
       </details>
     `;
+
+    const attachSummaryGuard = root => {
+      root.querySelectorAll(".item-summary, .collapse-summary").forEach(summary => {
+        summary.addEventListener("click", event => {
+          if (!event.target.closest("button")) return;
+          event.preventDefault();
+          event.stopPropagation();
+        });
+      });
+    };
+    attachSummaryGuard($("#gadgetsContainer"));
+    attachSummaryGuard($("#itemsContainer"));
 
     $$('[data-gadget-field]').forEach(input => {
       input.addEventListener("input", () => {
         const i = Number(input.dataset.index), k = input.dataset.gadgetField;
         character.gadgets[i][k] = input.type === "number" ? numberOrNull(input.value) ?? 0 : input.value;
-        // 入力中は再描画せず、保存だけを予約します。
+        // 名称入力時は、折りたたみ状態でも何のガジェットか分かるよう見出しも更新します。
+        if (k === "name") {
+          const summaryTitle = input.closest(".item-card")?.querySelector(".collapse-summary-title");
+          if (summaryTitle) summaryTitle.textContent = input.value || `ガジェット #${i + 1}`;
+        }
         markPdfNeedsSaving();
       });
     });
@@ -1075,22 +1140,32 @@
       input.addEventListener("input", () => {
         const i = Number(input.dataset.index), k = input.dataset.itemField;
         character.items[i][k] = input.type === "number" ? numberOrNull(input.value) ?? 0 : input.value;
-        // 入力中は再描画せず、保存だけを予約します。
+        // アイテム名も見出しへ即時反映します。
+        if (k === "name") {
+          const summaryTitle = input.closest(".item-card")?.querySelector(".collapse-summary-title");
+          if (summaryTitle) summaryTitle.textContent = input.value || `アイテム #${i + 1}`;
+        }
         markPdfNeedsSaving();
       });
     });
 
-    $$('[data-remove-gadget]').forEach(button => button.addEventListener("click", () => {
+    $$('[data-remove-gadget]').forEach(button => button.addEventListener("click", event => {
+      event.preventDefault();
+      event.stopPropagation();
       character.gadgets.splice(Number(button.dataset.removeGadget), 1);
       markPdfNeedsSaving();
       renderAll();
     }));
-
-    $$('[data-remove-item]').forEach(button => button.addEventListener("click", () => {
+    $$('[data-remove-item]').forEach(button => button.addEventListener("click", event => {
+      event.preventDefault();
+      event.stopPropagation();
       character.items.splice(Number(button.dataset.removeItem), 1);
       markPdfNeedsSaving();
       renderAll();
     }));
+
+    $("#addGadgetInlineButton")?.addEventListener("click", addGadget);
+    $("#addItemInlineButton")?.addEventListener("click", addItem);
   }
 
   // -------------------------------------------------------------------
@@ -1368,44 +1443,39 @@
   // -------------------------------------------------------------------
 
   async function exportPdf() {
-    // PDFでは、ユーザーが画面上で閉じていたdetailsも「必ず」開いた状態にしてから出力します。
-    // 出力後は、ユーザーが自分で設定していた開閉状態へ戻します。
-    const detailStates = [...document.querySelectorAll("details")].map(detail => ({
-      detail,
-      open: detail.open
-    }));
+    // PDFには折りたたみ状態に関係なく「中身をすべて表示」します。
+    // 現在の開閉状態は記録しておき、PDF生成後に元へ戻します。
+    const collapseStates = captureCollapseStates();
+    $$('details').forEach(details => { details.open = true; });
 
-    document.querySelectorAll("details").forEach(detail => {
-      detail.open = true;
-    });
-
-    try {
-      // html2pdf.jsが存在すれば、WebシートをそのままPDF化します。
-      // CDNを読み込めない環境では、ブラウザ標準の印刷ダイアログへフォールバックします。
-      if (window.html2pdf) {
-        const element = document.querySelector(".content");
-        const options = {
-          margin: [8, 8, 8, 8],
-          filename: `${sanitizeFilename(character.profile.name)}.pdf`,
-          image: { type: "jpeg", quality: 0.96 },
-          html2canvas: { scale: 1.5, useCORS: true, backgroundColor: "#ffffff" },
-          jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
-          pagebreak: { mode: ["css", "legacy"] }
-        };
+    // html2pdf.jsが存在すれば、WebシートをそのままPDF化します。
+    // CDNを読み込めない環境では、ブラウザ標準の印刷ダイアログへフォールバックします。
+    if (window.html2pdf) {
+      const element = document.querySelector(".content");
+      const options = {
+        margin: [8, 8, 8, 8],
+        filename: `${sanitizeFilename(character.profile.name)}.pdf`,
+        image: { type: "jpeg", quality: 0.96 },
+        html2canvas: { scale: 1.5, useCORS: true, backgroundColor: "#ffffff" },
+        jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
+        pagebreak: { mode: ["css", "legacy"] }
+      };
+      try {
         await window.html2pdf().set(options).from(element).save();
         pdfSavedSinceLastChange = true;
-        return;
+      } finally {
+        restoreCollapseStates(collapseStates);
       }
+      return;
+    }
 
-      // 印刷ダイアログ経由の保存はブラウザ側で結果を取得できないため、
-      // ダイアログを開いた時点で確認済み扱いにします。
+    // 印刷ダイアログ経由の保存はブラウザ側で結果を取得できないため、
+    // ダイアログを開いた時点で確認済み扱いにします。
+    try {
       pdfSavedSinceLastChange = true;
       window.print();
     } finally {
-      // PDF出力のため一時的に開いたdetailsを、元の状態へ戻します。
-      detailStates.forEach(({ detail, open }) => {
-        detail.open = open;
-      });
+      restoreCollapseStates(collapseStates);
     }
   }
 
@@ -1452,13 +1522,56 @@
   }
 
 
+  function setupCollapseInteractiveGuards(root = document) {
+    // summary内にあるボタン・入力欄を操作したとき、親detailsが意図せず開閉しないようにします。
+    // data-guard-attachedで二重登録を防ぎます。
+    $$('summary', root).forEach(summary => {
+      if (summary.dataset.guardAttached === "1") return;
+      summary.dataset.guardAttached = "1";
+
+      summary.addEventListener("click", event => {
+        const interactive = event.target.closest("button, input, label, select, textarea");
+        if (!interactive) return;
+
+        const details = summary.closest("details");
+        const wasOpen = details?.open ?? true;
+        // クリックイベントの標準動作でdetailsが開閉したあと、元の状態へ戻します。
+        window.setTimeout(() => {
+          if (details) details.open = wasOpen;
+        }, 0);
+      });
+    });
+  }
+
+  function captureCollapseStates() {
+    // 再描画でdetails要素が作り直されても、開閉状態をできるだけ維持します。
+    const states = {};
+    $$('[data-collapse-id]').forEach(element => {
+      states[element.dataset.collapseId] = Boolean(element.open);
+    });
+    return states;
+  }
+
+  function restoreCollapseStates(states) {
+    // 新しく追加されたdetailsには「open」属性の初期状態をそのまま使います。
+    $$('[data-collapse-id]').forEach(element => {
+      const id = element.dataset.collapseId;
+      if (Object.prototype.hasOwnProperty.call(states, id)) {
+        element.open = states[id];
+      }
+    });
+  }
+
   function renderAll(sync = true) {
+    const collapseStates = captureCollapseStates();
+
     renderStats();
     renderPoints();
     renderSkills();
     renderAbilities();
     renderGadgetsAndItems();
     renderPortraits();
+    setupCollapseInteractiveGuards();
     renderValidation();
     updateCocofoliaPreview();
 
@@ -1474,6 +1587,7 @@
     }
 
     updateCocofoliaPreview();
+    restoreCollapseStates(collapseStates);
   }
 
   // -------------------------------------------------------------------
