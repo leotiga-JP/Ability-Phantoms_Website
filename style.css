@@ -272,7 +272,7 @@ textarea { resize: vertical; }
 .repeat-card .card-body { padding: 14px; }
 .card-title { font-weight: 800; }
 .small-note { margin: 3px 0 0; color: var(--muted); font-size: .75rem; }
-.remove-button { border: 1px solid #e0c4c4; background: #fff5f5; color: var(--danger); border-radius: 8px; padding: 5px 9px; }
+.remove-button { border: 1px solid #e0c4c4; background: #fff5f5; color: var(--danger); border-radius: 8px; padding: 7px 12px; white-space: nowrap; width: auto; min-width: max-content; display: inline-flex; align-items: center; justify-content: center; writing-mode: horizontal-tb; line-height: 1.2; }
 
 .skill-table { width: 100%; border-collapse: collapse; font-size: .84rem; }
 .skill-table th, .skill-table td { padding: 8px 7px; border-bottom: 1px solid var(--line); vertical-align: middle; }
@@ -670,11 +670,12 @@ textarea { resize: vertical; }
   }
 
   .ability-summary {
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
   }
 
   .ability-summary-name {
-    flex-basis: 100%;
+    flex: 1 1 auto;
+    min-width: 0;
   }
 
   .core-checkbox-wrap,

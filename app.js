@@ -105,7 +105,7 @@
 
       skills: createStandardSkills(),
 
-      abilities: [],
+      abilities: [defaultAbility()],
       gadgets: [],
       items: [],
 
@@ -646,7 +646,6 @@
         <details class="skill-group collapse-details" data-collapse-id="${escapeHtml(collapseId)}" open>
           <summary class="collapse-summary skill-group-summary">
             <span class="collapse-summary-title">${escapeHtml(category)}</span>
-            ${isOriginal ? `<button type="button" class="mini-button summary-add-button" data-add-custom-skill>＋ 技能を追加</button>` : ""}
           </summary>
           <div class="collapse-body skill-group-body">
             <div class="table-scroll">
@@ -1396,6 +1395,7 @@
     });
 
     if (!Array.isArray(merged.abilities)) merged.abilities = [];
+    if (merged.abilities.length === 0) merged.abilities = [defaultAbility()];
     if (!Array.isArray(merged.gadgets)) merged.gadgets = [];
     if (!Array.isArray(merged.items)) merged.items = [];
 
@@ -1637,7 +1637,6 @@
     // 固定IDのボタンは、HTML側のUI調整で存在しない版があっても
     // 以降のイベント登録全体が止まらないよう、すべてnull-safeにします。
     $("#rollAllStatsButton")?.addEventListener("click", rollAllStats);
-    $("#addSkillButton")?.addEventListener("click", addCustomSkill);
     $("#addAbilityButton")?.addEventListener("click", addAbility);
     $("#addGadgetButton")?.addEventListener("click", addGadget);
     $("#addItemButton")?.addEventListener("click", addItem);

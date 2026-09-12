@@ -11,7 +11,7 @@
     JavaScriptとは分離しているため、色や余白、文字サイズなどを変更したい場合は
     style.cssを編集してください。
   -->
-  <link rel="stylesheet" href="style.css?v=stage3-5" />
+  <link rel="stylesheet" href="style.css?v=stage3-6" />
 
   <!--
     PDF出力用ライブラリ。
@@ -22,9 +22,9 @@
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
   <!-- 標準技能などの編集しやすいマスターデータ。 -->
-  <script defer src="data.js?v=stage3-5"></script>
+  <script defer src="data.js?v=stage3-6"></script>
   <!-- 本体ロジック。最後に読み込むことで、data.jsの内容を利用できます。 -->
-  <script defer src="app.js?v=stage3-5"></script>
+  <script defer src="app.js?v=stage3-6"></script>
 </head>
 <body>
   <!--
@@ -171,8 +171,7 @@
 
       <!-- =============================================================
            2. 能力値
-           標準ルールのダイス式を初期設定として利用しつつ、最終値は
-           プレイヤーが自由に直接編集できるようにしています。
+           能力値はルールに沿った初期値を持ち、最終値はプレイヤーが直接編集できます。
            ============================================================= -->
       <section class="sheet-section" id="statsSection">
         <details class="section-details collapse-details" data-collapse-id="statsSection" open>
@@ -186,7 +185,7 @@
 
           <div class="collapse-body">
             <div class="section-heading section-heading-inner">
-              <p>標準ルールのダイス式を初期設定として利用しつつ、最終値はプレイヤーが自由に直接編集できます。</p>
+              <div></div>
               <button class="button" id="rollAllStatsButton">🎲 全能力値を振る</button>
             </div>
 
@@ -240,7 +239,6 @@
             <span class="summary-chevron" aria-hidden="true">⌄</span>
           </summary>
           <div class="collapse-body">
-            <p class="section-description">追加ポイントは「その他」に入力してください。</p>
             <div class="points-grid" id="pointsGrid"></div>
           </div>
         </details>
@@ -259,7 +257,6 @@
               <h2>技能</h2>
             </div>
             <div class="section-summary-actions">
-              <button class="button secondary" id="addSkillButton">＋ 技能を追加</button>
               <span class="summary-chevron" aria-hidden="true">⌄</span>
             </div>
           </summary>
