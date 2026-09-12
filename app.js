@@ -609,53 +609,84 @@
   function renderSkills() {
     const container = $("#skillsContainer");
     const grouped = new Map();
+
+    // 標準技能・オリジナル技能をカテゴリーごとにまとめます。
     character.skills.forEach((skill, index) => {
       if (!grouped.has(skill.category)) grouped.set(skill.category, []);
       grouped.get(skill.category).push({ skill, index });
     });
 
-    // 技能は系統ごとに折りたためるようにします。
-    // 「オリジナル技能」グループには、一覧のすぐ横で追加できるボタンを置きます。
-    container.innerHTML = [...grouped.entries()].map(([category, rows], groupIndex) => `
-      <details class="skill-group collapse-details" data-collapse-id="skill-group-${groupIndex}-${escapeHtml(category)}" open>
-        <summary class="collapse-summary skill-group-summary">
-          <span class="collapse-summary-title">${escapeHtml(category)}</span>
-          ${category === "オリジナル技能" ? `<button type="button" class="mini-button summary-add-button" data-add-custom-skill>＋ 技能を追加</button>` : ""}
-        </summary>
-        <div class="collapse-body skill-group-body">
-          <div class="table-scroll">
-            <table class="skill-table">
-              <thead>
-                <tr>
-                  <th>技能名</th>
-                  <th>初期値</th>
-                  <th>職業P</th>
-                  <th>フリーP</th>
-                  <th>その他</th>
-                  <th>消費倍率</th>
-                  <th>最終技能値</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                ${rows.map(({ skill, index }) => `
-                  <tr data-skill-index="${index}">
-                    <td><input type="text" data-skill-field="name" value="${escapeHtml(skill.name)}" /></td>
-                    <td><input type="number" data-skill-field="baseValue" value="${escapeHtml(skill.baseValue)}" /></td>
-                    <td><input type="number" min="0" data-skill-field="occupationPoints" value="${escapeHtml(skill.occupationPoints)}" /></td>
-                    <td><input type="number" min="0" data-skill-field="freePoints" value="${escapeHtml(skill.freePoints)}" /></td>
-                    <td><input type="number" data-skill-field="otherModifier" value="${escapeHtml(skill.otherModifier)}" /></td>
-                    <td><input type="number" min="1" data-skill-field="pointCostPerValue" value="${escapeHtml(skill.pointCostPerValue)}" /></td>
-                    <td><strong>${calculateSkillFinalValue(skill)}</strong></td>
-                    <td>${skill.isCustom ? `<button type="button" class="remove-button" data-remove-skill="${index}">削除</button>` : ""}</td>
+    // オリジナル技能は中身が0件になってもセクションを残します。
+    // これにより、既存の技能をすべて削除した後も、同じ場所から追加できます。
+    if (!grouped.has("オリジナル技能")) grouped.set("オリジナル技能", []);
+
+    // 表示順を固定して、折りたたみ状態がカテゴリー追加・削除でずれないようにします。
+    const categoryOrder = [
+      "基本技能 / 身体系",
+      "基本技能 / 器用系",
+      "基本技能 / 感覚系",
+      "基本技能 / 知性系",
+      "基本技能 / カリスマ系",
+      "怪盗系技能",
+      "職業専門技能",
+      "オリジナル技能"
+    ];
+
+    const orderedCategories = [
+      ...categoryOrder.filter(category => grouped.has(category)),
+      ...[...grouped.keys()].filter(category => !categoryOrder.includes(category))
+    ];
+
+    container.innerHTML = orderedCategories.map(category => {
+      const rows = grouped.get(category) || [];
+      const collapseId = `skill-group-${category}`;
+      const isOriginal = category === "オリジナル技能";
+
+      return `
+        <details class="skill-group collapse-details" data-collapse-id="${escapeHtml(collapseId)}" open>
+          <summary class="collapse-summary skill-group-summary">
+            <span class="collapse-summary-title">${escapeHtml(category)}</span>
+            ${isOriginal ? `<button type="button" class="mini-button summary-add-button" data-add-custom-skill>＋ 技能を追加</button>` : ""}
+          </summary>
+          <div class="collapse-body skill-group-body">
+            <div class="table-scroll">
+              <table class="skill-table">
+                <thead>
+                  <tr>
+                    <th>技能名</th>
+                    <th>初期値</th>
+                    <th>職業P</th>
+                    <th>フリーP</th>
+                    <th>その他</th>
+                    <th>消費倍率</th>
+                    <th>最終技能値</th>
+                    <th></th>
                   </tr>
-                `).join("")}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  ${rows.length ? rows.map(({ skill, index }) => `
+                    <tr data-skill-index="${index}">
+                      <td><input type="text" data-skill-field="name" value="${escapeHtml(skill.name)}" /></td>
+                      <td><input type="number" data-skill-field="baseValue" value="${escapeHtml(skill.baseValue)}" /></td>
+                      <td><input type="number" min="0" data-skill-field="occupationPoints" value="${escapeHtml(skill.occupationPoints)}" /></td>
+                      <td><input type="number" min="0" data-skill-field="freePoints" value="${escapeHtml(skill.freePoints)}" /></td>
+                      <td><input type="number" data-skill-field="otherModifier" value="${escapeHtml(skill.otherModifier)}" /></td>
+                      <td><input type="number" min="1" data-skill-field="pointCostPerValue" value="${escapeHtml(skill.pointCostPerValue)}" /></td>
+                      <td><strong>${calculateSkillFinalValue(skill)}</strong></td>
+                      <td>${skill.isCustom ? `<button type="button" class="remove-button" data-remove-skill="${index}">削除</button>` : ""}</td>
+                    </tr>
+                  `).join("") : `
+                    <tr class="empty-skill-row">
+                      <td colspan="8"><span class="small-note">オリジナル技能はまだありません。「＋ 技能を追加」から追加できます。</span></td>
+                    </tr>
+                  `}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
-      </details>
-    `).join("");
+        </details>
+      `;
+    }).join("");
 
     $$('[data-skill-index]', container).forEach(row => {
       const index = Number(row.dataset.skillIndex);
@@ -673,7 +704,7 @@
 
     $$('[data-add-custom-skill]', container).forEach(button => {
       button.addEventListener("click", event => {
-        // summary内の追加ボタンなので、親detailsの開閉を起こさないようにします。
+        // summary内の追加ボタンなので、親details自体の開閉を起こさないようにします。
         event.preventDefault();
         event.stopPropagation();
         addCustomSkill();
@@ -681,7 +712,9 @@
     });
 
     $$('[data-remove-skill]', container).forEach(button => {
-      button.addEventListener("click", () => {
+      button.addEventListener("click", event => {
+        event.preventDefault();
+        event.stopPropagation();
         character.skills.splice(Number(button.dataset.removeSkill), 1);
         markPdfNeedsSaving();
         renderAll();
@@ -808,7 +841,7 @@
 
             <!-- 長い異能力を続けて作成できるよう、カード下部にも追加ボタンを配置します。 -->
             <div class="inline-actions add-next-row">
-              <button type="button" class="button secondary" data-add-ability-inline>＋ 異能力を追加</button>
+              <button type="button" class="mini-button" data-add-ability-inline>＋ 異能力を追加</button>
             </div>
           </div>
         </details>
@@ -1075,7 +1108,7 @@
             </details>
           `).join("")}
           <div class="inline-actions add-next-row">
-            <button type="button" class="button secondary" id="addGadgetInlineButton">＋ ガジェットを追加</button>
+            <button type="button" class="mini-button" id="addGadgetInlineButton">＋ ガジェットを追加</button>
           </div>
         </div>
       </details>
@@ -1105,7 +1138,7 @@
             </details>
           `).join("")}
           <div class="inline-actions add-next-row">
-            <button type="button" class="button secondary" id="addItemInlineButton">＋ アイテムを追加</button>
+            <button type="button" class="mini-button" id="addItemInlineButton">＋ アイテムを追加</button>
           </div>
         </div>
       </details>

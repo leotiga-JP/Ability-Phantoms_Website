@@ -534,6 +534,22 @@ textarea { resize: vertical; }
   padding-top: 8px;
 }
 
+.empty-skill-row td {
+  padding: 14px 8px;
+  text-align: center;
+  background: var(--surface);
+}
+
+.skill-group .summary-add-button {
+  flex: 0 0 auto;
+}
+
+.item-subsection .section-bottom-add {
+  justify-content: flex-end;
+  margin-top: 10px;
+}
+
+
 .table-scroll {
   width: 100%;
   overflow-x: auto;
