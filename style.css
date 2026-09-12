@@ -414,3 +414,234 @@ textarea { resize: vertical; }
 @media (max-width: 980px) {
   .save-status { order: -1; }
 }
+
+/* ================================================================
+   折りたたみ式セクション
+   ---------------------------------------------------------------
+   details/summaryを使うことで、JavaScriptなしでも開閉できます。
+   PDF出力時はapp.js側ですべてopenにしてからキャプチャします。
+   ================================================================ */
+.collapsible-section {
+  overflow: hidden;
+}
+.collapsible-summary,
+.nested-details > summary,
+.ability-summary,
+.item-summary {
+  list-style: none;
+  cursor: pointer;
+}
+.collapsible-summary::-webkit-details-marker,
+.nested-details > summary::-webkit-details-marker,
+.ability-summary::-webkit-details-marker,
+.item-summary::-webkit-details-marker {
+  display: none;
+}
+.collapsible-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin: -22px -22px 0;
+  padding: 18px 22px;
+  border-bottom: 1px solid transparent;
+}
+.collapsible-section[open] > .collapsible-summary {
+  margin-bottom: 0;
+  border-bottom-color: var(--line);
+}
+.collapsible-summary::before {
+  content: "▸";
+  flex: 0 0 auto;
+  color: var(--accent);
+  font-size: 1rem;
+  transition: transform .15s ease;
+}
+.collapsible-section[open] > .collapsible-summary::before {
+  transform: rotate(90deg);
+}
+.section-title-wrap {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  min-width: 0;
+  margin-right: auto;
+}
+.section-title-text {
+  font-size: 1.35rem;
+  font-weight: 800;
+}
+.collapse-hint {
+  color: var(--muted);
+  font-size: .72rem;
+  white-space: nowrap;
+}
+.section-content {
+  padding-top: 20px;
+}
+.section-heading-inner {
+  align-items: center;
+}
+.section-heading-inner > p,
+.section-description {
+  color: var(--muted);
+  font-size: .86rem;
+}
+
+/* 技能：技能全体→技能系統という2階層の折りたたみ。 */
+.skill-group {
+  margin-bottom: 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface-2);
+  overflow: hidden;
+}
+.skill-group > summary {
+  padding: 12px 14px;
+  font-weight: 800;
+  color: var(--accent);
+  background: #fbf9f4;
+}
+.skill-group[open] > summary {
+  border-bottom: 1px solid var(--line);
+}
+.skill-group > summary::before,
+.nested-details > summary::before,
+.ability-summary::before,
+.item-summary::before {
+  content: "▸";
+  display: inline-block;
+  margin-right: 8px;
+  color: var(--accent);
+  transition: transform .15s ease;
+}
+.skill-group[open] > summary::before,
+.nested-details[open] > summary::before,
+.ability-fold[open] > .ability-summary::before,
+.item-fold[open] > .item-summary::before {
+  transform: rotate(90deg);
+}
+.skill-group-body {
+  padding: 12px;
+}
+.table-scroll-wrapper {
+  overflow-x: auto;
+}
+
+/* 異能力：異能力そのもの→属性/拡張/制約という入れ子。 */
+.ability-fold {
+  overflow: hidden;
+}
+.ability-summary,
+.item-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  background: #fbf9f4;
+}
+.ability-fold[open] > .ability-summary,
+.item-fold[open] > .item-summary {
+  border-bottom: 1px solid var(--line);
+}
+.ability-card-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 12px;
+}
+.component-section {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface-2);
+}
+.component-section + .component-section {
+  margin-top: 10px;
+}
+.component-section > summary {
+  padding: 10px 12px;
+  font-weight: 800;
+}
+.component-section[open] > summary {
+  border-bottom: 1px solid var(--line);
+}
+.component-section .nested-details-body {
+  padding: 10px;
+}
+
+/* ガジェット・アイテム：大分類→個別データという入れ子。 */
+#gadgetsContainer > .nested-details,
+#itemsContainer > .nested-details {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface-2);
+  margin-bottom: 14px;
+}
+#gadgetsContainer > .nested-details > summary,
+#itemsContainer > .nested-details > summary {
+  padding: 12px 14px;
+  font-weight: 800;
+  background: #fbf9f4;
+}
+#gadgetsContainer > .nested-details[open] > summary,
+#itemsContainer > .nested-details[open] > summary {
+  border-bottom: 1px solid var(--line);
+}
+#gadgetsContainer > .nested-details > .nested-details-body,
+#itemsContainer > .nested-details > .nested-details-body {
+  padding: 12px;
+}
+.item-fold {
+  overflow: hidden;
+  margin-bottom: 10px;
+}
+
+/* 設定・メモのテキスト欄を個別折りたたみにします。 */
+.nested-details-grid {
+  display: grid;
+  gap: 10px;
+}
+.nested-details {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface-2);
+}
+.nested-details > summary {
+  padding: 11px 13px;
+  font-weight: 800;
+  background: #fbf9f4;
+}
+.nested-details[open] > summary {
+  border-bottom: 1px solid var(--line);
+}
+.nested-details-body {
+  padding: 12px;
+}
+.nested-details-body > textarea {
+  display: block;
+}
+
+/* モバイルでは折りたたみヘッダーを少し詰めます。 */
+@media (max-width: 680px) {
+  .collapsible-summary {
+    margin: -15px -15px 0;
+    padding: 15px;
+  }
+  .section-title-text { font-size: 1.15rem; }
+  .collapse-hint { font-size: .66rem; }
+}
+
+/* PDF/印刷時は折りたたみ状態に関係なく中身を表示します。 */
+@media print {
+  details, details[open] { display: block; }
+  details > summary { list-style: none; }
+  .collapsible-summary,
+  .nested-details > summary,
+  .ability-summary,
+  .item-summary { cursor: default; }
+  .collapse-hint { display: none !important; }
+  .collapsible-summary { margin: -22px -22px 0; }
+}

@@ -608,38 +608,44 @@
       grouped.get(skill.category).push({ skill, index });
     });
 
+    // 技能全体の中を「身体系」「器用系」「感覚系」などの
+    // 系統別detailsに分けます。detailsなので、ユーザーが各系統を個別に開閉できます。
     container.innerHTML = [...grouped.entries()].map(([category, rows]) => `
-      <div class="skill-group">
-        <h3 class="skill-category">${escapeHtml(category)}</h3>
-        <table class="skill-table">
-          <thead>
-            <tr>
-              <th>技能名</th>
-              <th>初期値</th>
-              <th>職業P</th>
-              <th>フリーP</th>
-              <th>その他</th>
-              <th>消費倍率</th>
-              <th>最終技能値</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            ${rows.map(({ skill, index }) => `
-              <tr data-skill-index="${index}">
-                <td><input type="text" data-skill-field="name" value="${escapeHtml(skill.name)}" /></td>
-                <td><input type="number" data-skill-field="baseValue" value="${escapeHtml(skill.baseValue)}" /></td>
-                <td><input type="number" min="0" data-skill-field="occupationPoints" value="${escapeHtml(skill.occupationPoints)}" /></td>
-                <td><input type="number" min="0" data-skill-field="freePoints" value="${escapeHtml(skill.freePoints)}" /></td>
-                <td><input type="number" data-skill-field="otherModifier" value="${escapeHtml(skill.otherModifier)}" /></td>
-                <td><input type="number" min="1" data-skill-field="pointCostPerValue" value="${escapeHtml(skill.pointCostPerValue)}" /></td>
-                <td><strong>${calculateSkillFinalValue(skill)}</strong></td>
-                <td>${skill.isCustom ? `<button type="button" class="remove-button" data-remove-skill="${index}">削除</button>` : ""}</td>
-              </tr>
-            `).join("")}
-          </tbody>
-        </table>
-      </div>
+      <details class="skill-group nested-details" open>
+        <summary>${escapeHtml(category)}</summary>
+        <div class="nested-details-body skill-group-body">
+          <div class="table-scroll-wrapper">
+            <table class="skill-table">
+              <thead>
+                <tr>
+                  <th>技能名</th>
+                  <th>初期値</th>
+                  <th>職業P</th>
+                  <th>フリーP</th>
+                  <th>その他</th>
+                  <th>消費倍率</th>
+                  <th>最終技能値</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                ${rows.map(({ skill, index }) => `
+                  <tr data-skill-index="${index}">
+                    <td><input type="text" data-skill-field="name" value="${escapeHtml(skill.name)}" /></td>
+                    <td><input type="number" data-skill-field="baseValue" value="${escapeHtml(skill.baseValue)}" /></td>
+                    <td><input type="number" min="0" data-skill-field="occupationPoints" value="${escapeHtml(skill.occupationPoints)}" /></td>
+                    <td><input type="number" min="0" data-skill-field="freePoints" value="${escapeHtml(skill.freePoints)}" /></td>
+                    <td><input type="number" data-skill-field="otherModifier" value="${escapeHtml(skill.otherModifier)}" /></td>
+                    <td><input type="number" min="1" data-skill-field="pointCostPerValue" value="${escapeHtml(skill.pointCostPerValue)}" /></td>
+                    <td><strong>${calculateSkillFinalValue(skill)}</strong></td>
+                    <td>${skill.isCustom ? `<button type="button" class="remove-button" data-remove-skill="${index}">削除</button>` : ""}</td>
+                  </tr>
+                `).join("")}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </details>
     `).join("");
 
     $$('[data-skill-index]', container).forEach(row => {
@@ -657,7 +663,6 @@
 
     $$('[data-remove-skill]', container).forEach(button => {
       button.addEventListener("click", () => {
-
         character.skills.splice(Number(button.dataset.removeSkill), 1);
         markPdfNeedsSaving();
         renderAll();
@@ -721,16 +726,17 @@
     container.innerHTML = character.abilities.map((ability, index) => {
       const totals = calculateAbilityTotals(ability);
       return `
-        <article class="repeat-card">
-          <div class="card-header">
-            <div>
-              <div class="card-title">異能力 #${index + 1}</div>
-              <p class="small-note">キャパシティ上限は標準5。超過時は警告表示のみです。</p>
-            </div>
-            <button type="button" class="remove-button" data-remove-ability="${index}">異能力を削除</button>
-          </div>
+        <details class="repeat-card ability-fold" open>
+          <summary class="ability-summary">
+            <span class="card-title">異能力 #${index + 1}：${escapeHtml(ability.name || "新しい異能力")}</span>
+            <span class="collapse-hint">クリックで開閉</span>
+          </summary>
 
           <div class="card-body">
+            <div class="ability-card-actions no-print">
+              <button type="button" class="remove-button" data-remove-ability="${index}">異能力を削除</button>
+            </div>
+
             <div class="form-grid two-column">
               <label class="field">
                 <span>異能力名</span>
@@ -781,7 +787,7 @@
               <div class="total-chip"><small>所持数カウント</small><strong>1</strong></div>
             </div>
           </div>
-        </article>
+        </details>
       `;
     }).join("");
 
@@ -793,7 +799,6 @@
 
     $$('[data-remove-ability]', container).forEach(button => {
       button.addEventListener("click", () => {
-
         character.abilities.splice(Number(button.dataset.removeAbility), 1);
         markPdfNeedsSaving();
         renderAll();
@@ -808,7 +813,6 @@
     $$('[data-add-component]', container).forEach(button => {
       button.addEventListener("click", () => {
         const ability = character.abilities[Number(button.dataset.abilityIndex)];
-
         ability[button.dataset.addComponent].push(defaultComponent());
         markPdfNeedsSaving();
         renderAll();
@@ -819,7 +823,6 @@
       button.addEventListener("click", () => {
         const ability = character.abilities[Number(button.dataset.abilityIndex)];
         const collection = ability[button.dataset.collection];
-
         collection.splice(Number(button.dataset.componentIndex), 1);
         markPdfNeedsSaving();
         renderAll();
@@ -829,23 +832,26 @@
 
   function renderComponentSection(ability, abilityIndex, collectionKey, label) {
     return `
-      <div class="component-section">
-        <div class="component-section-header">
-          <strong>${label}</strong>
-          <button type="button" class="mini-button" data-add-component="${collectionKey}" data-ability-index="${abilityIndex}">＋ 追加</button>
+      <details class="component-section nested-details" open>
+        <summary>${label}</summary>
+        <div class="nested-details-body">
+          <div class="component-section-header">
+            <strong>${label}</strong>
+            <button type="button" class="mini-button" data-add-component="${collectionKey}" data-ability-index="${abilityIndex}">＋ 追加</button>
+          </div>
+          <div class="ability-component-list">
+            ${(ability[collectionKey] || []).map((component, index) => `
+              <div class="component-row">
+                <input type="text" placeholder="名称" data-component-field="name" data-collection="${collectionKey}" data-ability-index="${abilityIndex}" data-component-index="${index}" value="${escapeHtml(component.name)}" />
+                <input type="number" placeholder="取得" data-component-field="acquisitionCost" data-collection="${collectionKey}" data-ability-index="${abilityIndex}" data-component-index="${index}" value="${escapeHtml(component.acquisitionCost)}" />
+                <input type="number" placeholder="使用" data-component-field="usageCost" data-collection="${collectionKey}" data-ability-index="${abilityIndex}" data-component-index="${index}" value="${escapeHtml(component.usageCost)}" />
+                <textarea rows="1" placeholder="説明" data-component-field="description" data-collection="${collectionKey}" data-ability-index="${abilityIndex}" data-component-index="${index}">${escapeHtml(component.description)}</textarea>
+                <button type="button" class="remove-button" data-remove-component="1" data-collection="${collectionKey}" data-ability-index="${abilityIndex}" data-component-index="${index}">削除</button>
+              </div>
+            `).join("")}
+          </div>
         </div>
-        <div class="ability-component-list">
-          ${(ability[collectionKey] || []).map((component, index) => `
-            <div class="component-row">
-              <input type="text" placeholder="名称" data-component-field="name" data-collection="${collectionKey}" data-ability-index="${abilityIndex}" data-component-index="${index}" value="${escapeHtml(component.name)}" />
-              <input type="number" placeholder="取得" data-component-field="acquisitionCost" data-collection="${collectionKey}" data-ability-index="${abilityIndex}" data-component-index="${index}" value="${escapeHtml(component.acquisitionCost)}" />
-              <input type="number" placeholder="使用" data-component-field="usageCost" data-collection="${collectionKey}" data-ability-index="${abilityIndex}" data-component-index="${index}" value="${escapeHtml(component.usageCost)}" />
-              <textarea rows="1" placeholder="説明" data-component-field="description" data-collection="${collectionKey}" data-ability-index="${abilityIndex}" data-component-index="${index}">${escapeHtml(component.description)}</textarea>
-              <button type="button" class="remove-button" data-remove-component="1" data-collection="${collectionKey}" data-ability-index="${abilityIndex}" data-component-index="${index}">削除</button>
-            </div>
-          `).join("")}
-        </div>
-      </div>
+      </details>
     `;
   }
 
@@ -999,46 +1005,68 @@
   }
 
   function renderGadgetsAndItems() {
-    // ガジェットに上限は設けないため、現在の個数だけ表示します。
-    $("#gadgetsContainer").innerHTML = character.gadgets.map((item, index) => `
-      <article class="repeat-card">
-        <div class="card-header">
-          <strong>ガジェット #${index + 1}</strong>
-          <button type="button" class="remove-button" data-remove-gadget="${index}">削除</button>
-        </div>
-        <div class="card-body form-grid two-column">
-          <label class="field"><span>名称</span><input data-gadget-field="name" data-index="${index}" value="${escapeHtml(item.name)}" /></label>
-          <label class="field"><span>数量</span><input type="number" min="1" data-gadget-field="quantity" data-index="${index}" value="${escapeHtml(item.quantity)}" /></label>
-          <label class="field wide"><span>説明</span><textarea rows="3" data-gadget-field="description" data-index="${index}">${escapeHtml(item.description)}</textarea></label>
-        </div>
-      </article>
-    `).join("");
+    // ガジェットとアイテムをそれぞれ独立したdetailsとして表示します。
+    // ガジェット数には上限を設けません。
+    const gadgetsContainer = $("#gadgetsContainer");
+    const itemsContainer = $("#itemsContainer");
 
-    $("#itemsContainer").innerHTML = character.items.map((item, index) => `
-      <article class="repeat-card">
-        <div class="card-header">
-          <strong>アイテム #${index + 1}</strong>
-          <button type="button" class="remove-button" data-remove-item="${index}">削除</button>
+    gadgetsContainer.innerHTML = `
+      <details class="nested-details" open>
+        <summary>ガジェット</summary>
+        <div class="nested-details-body">
+          ${character.gadgets.map((item, index) => `
+            <details class="repeat-card item-fold" open>
+              <summary class="item-summary">
+                <span>${escapeHtml(item.name || `ガジェット #${index + 1}`)}</span>
+                <span class="collapse-hint">クリックで開閉</span>
+              </summary>
+              <div class="card-body form-grid two-column">
+                <div class="wide inline-actions no-print" style="justify-content:flex-end;">
+                  <button type="button" class="remove-button" data-remove-gadget="${index}">削除</button>
+                </div>
+                <label class="field"><span>名称</span><input data-gadget-field="name" data-index="${index}" value="${escapeHtml(item.name)}" /></label>
+                <label class="field"><span>数量</span><input type="number" min="1" data-gadget-field="quantity" data-index="${index}" value="${escapeHtml(item.quantity)}" /></label>
+                <label class="field wide"><span>説明</span><textarea rows="3" data-gadget-field="description" data-index="${index}">${escapeHtml(item.description)}</textarea></label>
+              </div>
+            </details>
+          `).join("")}
         </div>
-        <div class="card-body form-grid two-column">
-          <label class="field"><span>名称</span><input data-item-field="name" data-index="${index}" value="${escapeHtml(item.name)}" /></label>
-          <label class="field"><span>カテゴリ</span><input data-item-field="category" data-index="${index}" value="${escapeHtml(item.category)}" /></label>
-          <label class="field"><span>使用技能</span><input data-item-field="skill" data-index="${index}" value="${escapeHtml(item.skill)}" /></label>
-          <label class="field"><span>ダイスボーナス</span><input type="number" data-item-field="diceBonus" data-index="${index}" value="${escapeHtml(item.diceBonus)}" /></label>
-          <label class="field"><span>耐久値</span><input data-item-field="durability" data-index="${index}" value="${escapeHtml(item.durability)}" /></label>
-          <label class="field"><span>数量</span><input type="number" min="1" data-item-field="quantity" data-index="${index}" value="${escapeHtml(item.quantity)}" /></label>
-          <label class="field wide"><span>説明・特殊効果</span><textarea rows="3" data-item-field="description" data-index="${index}">${escapeHtml(item.description)}</textarea></label>
+      </details>
+    `;
+
+    itemsContainer.innerHTML = `
+      <details class="nested-details" open>
+        <summary>アイテム</summary>
+        <div class="nested-details-body">
+          ${character.items.map((item, index) => `
+            <details class="repeat-card item-fold" open>
+              <summary class="item-summary">
+                <span>${escapeHtml(item.name || `アイテム #${index + 1}`)}</span>
+                <span class="collapse-hint">クリックで開閉</span>
+              </summary>
+              <div class="card-body form-grid two-column">
+                <div class="wide inline-actions no-print" style="justify-content:flex-end;">
+                  <button type="button" class="remove-button" data-remove-item="${index}">削除</button>
+                </div>
+                <label class="field"><span>名称</span><input data-item-field="name" data-index="${index}" value="${escapeHtml(item.name)}" /></label>
+                <label class="field"><span>カテゴリ</span><input data-item-field="category" data-index="${index}" value="${escapeHtml(item.category)}" /></label>
+                <label class="field"><span>使用技能</span><input data-item-field="skill" data-index="${index}" value="${escapeHtml(item.skill)}" /></label>
+                <label class="field"><span>ダイスボーナス</span><input type="number" data-item-field="diceBonus" data-index="${index}" value="${escapeHtml(item.diceBonus)}" /></label>
+                <label class="field"><span>耐久値</span><input data-item-field="durability" data-index="${index}" value="${escapeHtml(item.durability)}" /></label>
+                <label class="field"><span>数量</span><input type="number" min="1" data-item-field="quantity" data-index="${index}" value="${escapeHtml(item.quantity)}" /></label>
+                <label class="field wide"><span>説明・特殊効果</span><textarea rows="3" data-item-field="description" data-index="${index}">${escapeHtml(item.description)}</textarea></label>
+              </div>
+            </details>
+          `).join("")}
         </div>
-      </article>
-    `).join("");
+      </details>
+    `;
 
     $$('[data-gadget-field]').forEach(input => {
       input.addEventListener("input", () => {
         const i = Number(input.dataset.index), k = input.dataset.gadgetField;
         character.gadgets[i][k] = input.type === "number" ? numberOrNull(input.value) ?? 0 : input.value;
-        // 入力中に画面全体を再描画すると、input要素自体が作り直されて
-        // フォーカスが外れ、1文字ごとに入力が止まってしまいます。
-        // ここでは再描画せず、データ更新と保存予約だけを行います。
+        // 入力中は再描画せず、保存だけを予約します。
         markPdfNeedsSaving();
       });
     });
@@ -1047,19 +1075,21 @@
       input.addEventListener("input", () => {
         const i = Number(input.dataset.index), k = input.dataset.itemField;
         character.items[i][k] = input.type === "number" ? numberOrNull(input.value) ?? 0 : input.value;
-        // アイテムも同様に、入力中の全体再描画を行わず
-        // データ更新と保存予約だけを行います。
+        // 入力中は再描画せず、保存だけを予約します。
         markPdfNeedsSaving();
       });
     });
 
     $$('[data-remove-gadget]').forEach(button => button.addEventListener("click", () => {
-
-      character.gadgets.splice(Number(button.dataset.removeGadget), 1); markPdfNeedsSaving(); renderAll();
+      character.gadgets.splice(Number(button.dataset.removeGadget), 1);
+      markPdfNeedsSaving();
+      renderAll();
     }));
-    $$('[data-remove-item]').forEach(button => button.addEventListener("click", () => {
 
-      character.items.splice(Number(button.dataset.removeItem), 1); markPdfNeedsSaving(); renderAll();
+    $$('[data-remove-item]').forEach(button => button.addEventListener("click", () => {
+      character.items.splice(Number(button.dataset.removeItem), 1);
+      markPdfNeedsSaving();
+      renderAll();
     }));
   }
 
@@ -1338,27 +1368,45 @@
   // -------------------------------------------------------------------
 
   async function exportPdf() {
-    // html2pdf.jsが存在すれば、WebシートをそのままPDF化します。
-    // CDNを読み込めない環境では、ブラウザ標準の印刷ダイアログへフォールバックします。
-    if (window.html2pdf) {
-      const element = document.querySelector(".content");
-      const options = {
-        margin: [8, 8, 8, 8],
-        filename: `${sanitizeFilename(character.profile.name)}.pdf`,
-        image: { type: "jpeg", quality: 0.96 },
-        html2canvas: { scale: 1.5, useCORS: true, backgroundColor: "#ffffff" },
-        jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
-        pagebreak: { mode: ["css", "legacy"] }
-      };
-      await window.html2pdf().set(options).from(element).save();
-      pdfSavedSinceLastChange = true;
-      return;
-    }
+    // PDFでは、ユーザーが画面上で閉じていたdetailsも「必ず」開いた状態にしてから出力します。
+    // 出力後は、ユーザーが自分で設定していた開閉状態へ戻します。
+    const detailStates = [...document.querySelectorAll("details")].map(detail => ({
+      detail,
+      open: detail.open
+    }));
 
-    // 印刷ダイアログ経由の保存はブラウザ側で結果を取得できないため、
-    // ダイアログを開いた時点で確認済み扱いにします。
-    pdfSavedSinceLastChange = true;
-    window.print();
+    document.querySelectorAll("details").forEach(detail => {
+      detail.open = true;
+    });
+
+    try {
+      // html2pdf.jsが存在すれば、WebシートをそのままPDF化します。
+      // CDNを読み込めない環境では、ブラウザ標準の印刷ダイアログへフォールバックします。
+      if (window.html2pdf) {
+        const element = document.querySelector(".content");
+        const options = {
+          margin: [8, 8, 8, 8],
+          filename: `${sanitizeFilename(character.profile.name)}.pdf`,
+          image: { type: "jpeg", quality: 0.96 },
+          html2canvas: { scale: 1.5, useCORS: true, backgroundColor: "#ffffff" },
+          jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
+          pagebreak: { mode: ["css", "legacy"] }
+        };
+        await window.html2pdf().set(options).from(element).save();
+        pdfSavedSinceLastChange = true;
+        return;
+      }
+
+      // 印刷ダイアログ経由の保存はブラウザ側で結果を取得できないため、
+      // ダイアログを開いた時点で確認済み扱いにします。
+      pdfSavedSinceLastChange = true;
+      window.print();
+    } finally {
+      // PDF出力のため一時的に開いたdetailsを、元の状態へ戻します。
+      detailStates.forEach(({ detail, open }) => {
+        detail.open = open;
+      });
+    }
   }
 
   // -------------------------------------------------------------------
