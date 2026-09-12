@@ -1566,13 +1566,22 @@
         const interactive = event.target.closest("button, input, label, select, textarea");
         if (!interactive) return;
 
-        const details = summary.closest("details");
-        const wasOpen = details?.open ?? true;
-        // クリックイベントの標準動作でdetailsが開閉したあと、元の状態へ戻します。
-        window.setTimeout(() => {
-          if (details) details.open = wasOpen;
-        }, 0);
+        // summary内のボタンや入力欄をクリックした場合は、親detailsの
+        // 開閉処理を発生させません。以前の「一度開いてから戻す」方式では、
+        // 追加ボタンを押した瞬間に他の表示状態まで変わることがあったため、
+        // 標準のdetails開閉動作をこの場で明示的にキャンセルします。
+        event.preventDefault();
+        event.stopPropagation();
       });
+    });
+  }
+
+  function openAllCollapsibles(root = document) {
+    // 初回表示時は、ユーザーが内容を確認しやすいよう、すべての折りたたみを開きます。
+    // 以降の操作では renderAll() が現在の開閉状態を保持するため、
+    // ユーザー自身が閉じたセクションまで勝手に開き直すことはありません。
+    $$('details', root).forEach(element => {
+      element.open = true;
     });
   }
 
@@ -1721,6 +1730,11 @@
     syncBoundInputs(document);
     setupEvents();
     renderAll();
+
+    // 初回起動時は、技能・異能力を含むすべての一覧を表示した状態から開始します。
+    // 追加ボタンを押さなくても、まず内容を一覧で確認できるようにします。
+    openAllCollapsibles();
+
     renderSavedCharacters();
 
     if (restored) {
