@@ -96,6 +96,10 @@
         ppOverride: null,
         initiativeOverride: null,
         criticalValue: "",
+        // シナリオ等で発生する派生値のその他補正。
+        hpOtherModifier: 0,
+        ppOtherModifier: 0,
+        initiativeOtherModifier: 0,
         // フリーポイントからHP/PPへ割り振った量。1ポイントにつきHP/PPが1増加します。
         hpFreePoints: 0,
         ppFreePoints: 0
@@ -390,10 +394,13 @@
 
     const hpFreePoints = Math.max(0, toNumber(character.derived.hpFreePoints));
     const ppFreePoints = Math.max(0, toNumber(character.derived.ppFreePoints));
+    const hpOtherModifier = toNumber(character.derived.hpOtherModifier);
+    const ppOtherModifier = toNumber(character.derived.ppOtherModifier);
+    const initiativeOtherModifier = toNumber(character.derived.initiativeOtherModifier);
 
-    const hp = calculatedHp + hpFreePoints;
-    const pp = calculatedPp + ppFreePoints;
-    const initiative = calculatedInitiative;
+    const hp = calculatedHp + hpFreePoints + hpOtherModifier;
+    const pp = calculatedPp + ppFreePoints + ppOtherModifier;
+    const initiative = calculatedInitiative + initiativeOtherModifier;
 
     return {
       calculatedHp,
@@ -401,8 +408,12 @@
       calculatedInitiative,
       hpBase: calculatedHp,
       ppBase: calculatedPp,
+      initiativeBase: calculatedInitiative,
       hpFreePoints,
       ppFreePoints,
+      hpOtherModifier,
+      ppOtherModifier,
+      initiativeOtherModifier,
       hp,
       pp,
       initiative,
@@ -417,7 +428,9 @@
     const occupationBase = dexterity + sense + 10;
     const abilityBase = dexterity + mind;
     const freeBase = Math.ceil((charisma + sense + intelligence) / 2);
-    const reputation = Math.max(0, toNumber(character.stats.reputation));
+    const reputationBase = Math.max(0, toNumber(character.stats.reputation));
+    const reputationOtherModifier = toNumber(character.stats.reputationOtherModifier);
+    const reputation = Math.max(0, reputationBase + reputationOtherModifier);
     const freeFromReputation = reputation;
 
     // プレイヤーが「その他」で追加した分を加算。
@@ -445,6 +458,8 @@
       free: {
         base: freeBase,
         reputation: freeFromReputation,
+        reputationBase,
+        reputationOtherModifier,
         other: freeOther,
         total: freeTotal,
         used: freeUsed,
@@ -1460,6 +1475,15 @@
     if (merged.abilities.length === 0) merged.abilities = [defaultAbility()];
     if (!Array.isArray(merged.gadgets)) merged.gadgets = [];
     if (!Array.isArray(merged.items)) merged.items = [];
+
+    // 新しく追加した補正値は旧JSONに存在しないため、初期値を補います。
+    if (!merged.derived || typeof merged.derived !== "object") merged.derived = {};
+    if (merged.derived.hpOtherModifier === undefined) merged.derived.hpOtherModifier = 0;
+    if (merged.derived.ppOtherModifier === undefined) merged.derived.ppOtherModifier = 0;
+    if (merged.derived.initiativeOtherModifier === undefined) merged.derived.initiativeOtherModifier = 0;
+    if (merged.derived.hpFreePoints === undefined) merged.derived.hpFreePoints = 0;
+    if (merged.derived.ppFreePoints === undefined) merged.derived.ppFreePoints = 0;
+    if (merged.stats.reputationOtherModifier === undefined) merged.stats.reputationOtherModifier = 0;
 
     // 旧バージョンのJSONには立ち絵情報が存在しないため、安全に初期化します。
     if (!merged.profile.portraits || typeof merged.profile.portraits !== "object") {

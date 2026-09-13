@@ -11,7 +11,7 @@
     JavaScriptとは分離しているため、色や余白、文字サイズなどを変更したい場合は
     style.cssを編集してください。
   -->
-  <link rel="stylesheet" href="style.css?v=stage3-8" />
+  <link rel="stylesheet" href="style.css?v=stage3-9" />
 
   <!--
     PDF出力用ライブラリ。
@@ -22,9 +22,9 @@
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
   <!-- 標準技能などの編集しやすいマスターデータ。 -->
-  <script defer src="data.js?v=stage3-8"></script>
+  <script defer src="data.js?v=stage3-9"></script>
   <!-- 本体ロジック。最後に読み込むことで、data.jsの内容を利用できます。 -->
-  <script defer src="app.js?v=stage3-8"></script>
+  <script defer src="app.js?v=stage3-9"></script>
 </head>
 <body>
   <div id="quickPointStatus" class="quick-point-status no-print" aria-live="polite"></div>
@@ -202,6 +202,10 @@
                   <span>フリーポイント割り振り</span>
                   <input type="number" min="0" step="1" data-bind="derived.hpFreePoints" placeholder="0" />
                 </label>
+                <label class="field metric-modifier-field">
+                  <span>その他補正</span>
+                  <input type="number" step="1" data-bind="derived.hpOtherModifier" placeholder="0" />
+                </label>
               </div>
               <div class="metric-card derived-auto-card">
                 <span>PP</span>
@@ -213,6 +217,10 @@
                   <span>フリーポイント割り振り</span>
                   <input type="number" min="0" step="1" data-bind="derived.ppFreePoints" placeholder="0" />
                 </label>
+                <label class="field metric-modifier-field">
+                  <span>その他補正</span>
+                  <input type="number" step="1" data-bind="derived.ppOtherModifier" placeholder="0" />
+                </label>
               </div>
               <div class="metric-card derived-auto-card">
                 <span>イニシアチブ</span>
@@ -220,6 +228,10 @@
                   <span class="metric-formula">ceil((身体 + 知性) / 2)</span>
                   <input type="number" data-derived-display="initiative" readonly />
                 </div>
+                <label class="field metric-modifier-field">
+                  <span>その他補正</span>
+                  <input type="number" step="1" data-bind="derived.initiativeOtherModifier" placeholder="0" />
+                </label>
               </div>
               <div class="metric-card critical-card">
                 <span>クリティカル値</span>
@@ -236,6 +248,10 @@
                   <span class="metric-formula">1上昇するごとにフリーポイント+1</span>
                   <input data-bind="stats.reputation" type="number" min="0" step="1" placeholder="0" />
                 </div>
+                <label class="field metric-modifier-field">
+                  <span>その他補正</span>
+                  <input type="number" step="1" data-bind="stats.reputationOtherModifier" placeholder="0" />
+                </label>
               </div>
             </div>
           </div>

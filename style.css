@@ -313,8 +313,12 @@ textarea { resize: vertical; }
 .metric-allocation-field {
   margin-top: 10px;
 }
-.metric-allocation-field input {
+.metric-allocation-field input,
+.metric-modifier-field input {
   background: #fff;
+}
+.metric-modifier-field {
+  margin-top: 10px;
 }
 .critical-actions {
   margin-top: 2px;
