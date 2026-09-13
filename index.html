@@ -11,7 +11,7 @@
     JavaScriptとは分離しているため、色や余白、文字サイズなどを変更したい場合は
     style.cssを編集してください。
   -->
-  <link rel="stylesheet" href="style.css?v=stage3-6" />
+  <link rel="stylesheet" href="style.css?v=stage3-7" />
 
   <!--
     PDF出力用ライブラリ。
@@ -22,9 +22,9 @@
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
   <!-- 標準技能などの編集しやすいマスターデータ。 -->
-  <script defer src="data.js?v=stage3-6"></script>
+  <script defer src="data.js?v=stage3-7"></script>
   <!-- 本体ロジック。最後に読み込むことで、data.jsの内容を利用できます。 -->
-  <script defer src="app.js?v=stage3-6"></script>
+  <script defer src="app.js?v=stage3-7"></script>
 </head>
 <body>
   <!--
@@ -171,7 +171,6 @@
 
       <!-- =============================================================
            2. 能力値
-           能力値はルールに沿った初期値を持ち、最終値はプレイヤーが直接編集できます。
            ============================================================= -->
       <section class="sheet-section" id="statsSection">
         <details class="section-details collapse-details" data-collapse-id="statsSection" open>
@@ -217,6 +216,13 @@
                 <span>クリティカル値</span>
                 <div class="metric-row">
                   <input data-bind="derived.criticalValue" type="number" min="1" max="6" placeholder="1〜6" />
+                </div>
+              </div>
+              <div class="metric-card reputation-card">
+                <span>知名度</span>
+                <div class="metric-row">
+                  <span class="metric-formula">1上昇するごとにフリーポイント+1</span>
+                  <input data-bind="stats.reputation" type="number" min="0" step="1" placeholder="0" />
                 </div>
               </div>
             </div>

@@ -86,15 +86,19 @@
         sense: 2,
         intelligence: 2,
         mind: 2,
-        charisma: 2
+        charisma: 2,
+        reputation: 0
       },
 
       derived: {
-        // nullなら自動計算値を使用。数字が入っていればその値を優先します。
+        // nullなら自動計算値を使用。数字が入っていればその値を「基準値」として優先します。
         hpOverride: null,
         ppOverride: null,
         initiativeOverride: null,
-        criticalValue: ""
+        criticalValue: "",
+        // フリーポイントからHP/PPへ割り振った量。1ポイントにつきHP/PPが1増加します。
+        hpFreePoints: 0,
+        ppFreePoints: 0
       },
 
       pointPools: {
@@ -383,8 +387,13 @@
     const calculatedPp = 6 + mind;
     const calculatedInitiative = Math.ceil((body + intelligence) / 2);
 
-    const hp = character.derived.hpOverride === null ? calculatedHp : Number(character.derived.hpOverride);
-    const pp = character.derived.ppOverride === null ? calculatedPp : Number(character.derived.ppOverride);
+    const hpFreePoints = Math.max(0, toNumber(character.derived.hpFreePoints));
+    const ppFreePoints = Math.max(0, toNumber(character.derived.ppFreePoints));
+
+    const hpBase = character.derived.hpOverride === null ? calculatedHp : Number(character.derived.hpOverride);
+    const ppBase = character.derived.ppOverride === null ? calculatedPp : Number(character.derived.ppOverride);
+    const hp = hpBase + hpFreePoints;
+    const pp = ppBase + ppFreePoints;
     const initiative = character.derived.initiativeOverride === null
       ? calculatedInitiative
       : Number(character.derived.initiativeOverride);
@@ -393,6 +402,10 @@
       calculatedHp,
       calculatedPp,
       calculatedInitiative,
+      hpBase,
+      ppBase,
+      hpFreePoints,
+      ppFreePoints,
       hp,
       pp,
       initiative,
@@ -407,11 +420,14 @@
     const occupationBase = dexterity + sense + 10;
     const abilityBase = dexterity + mind;
     const freeBase = Math.ceil((charisma + sense + intelligence) / 2);
+    const reputation = Math.max(0, toNumber(character.stats.reputation));
+    const freeFromReputation = reputation;
 
     // プレイヤーが「その他」で追加した分を加算。
     const occupationTotal = occupationBase + toNumber(character.pointPools.occupationOther);
     const abilityTotal = abilityBase + toNumber(character.pointPools.abilityOther);
-    const freeTotal = freeBase + toNumber(character.pointPools.freeOther);
+    const freeOther = toNumber(character.pointPools.freeOther);
+    const freeTotal = freeBase + freeFromReputation + freeOther;
 
     // 技能から職業P/フリーPの使用済みを集計。
     const occupationUsed = character.skills.reduce((sum, skill) => sum + toNumber(skill.occupationPoints), 0);
@@ -421,14 +437,24 @@
     const abilityUsed = character.abilities.reduce((sum, ability) => sum + toNumber(ability.abilityPointsSpent), 0);
     const freeUsedByAbilities = character.abilities.reduce((sum, ability) => sum + toNumber(ability.freePointsSpent), 0);
 
-    // 注意：フリーポイントをHP/PPに使うUIは今後追加可能です。
-    // 現在は技能＋異能力への使用分だけを自動集計しています。
-    const freeUsed = freeUsedBySkills + freeUsedByAbilities;
+    // HP/PPへ直接割り振ったフリーポイントも使用済みに含めます。
+    const derived = calculateDerivedValues();
+    const freeUsedByHpPp = derived.hpFreePoints + derived.ppFreePoints;
+    const freeUsed = freeUsedBySkills + freeUsedByAbilities + freeUsedByHpPp;
 
     return {
       occupation: { base: occupationBase, other: toNumber(character.pointPools.occupationOther), total: occupationTotal, used: occupationUsed, remaining: occupationTotal - occupationUsed },
       ability: { base: abilityBase, other: toNumber(character.pointPools.abilityOther), total: abilityTotal, used: abilityUsed, remaining: abilityTotal - abilityUsed },
-      free: { base: freeBase, other: toNumber(character.pointPools.freeOther), total: freeTotal, used: freeUsed, remaining: freeTotal - freeUsed }
+      free: {
+        base: freeBase,
+        reputation: freeFromReputation,
+        other: freeOther,
+        total: freeTotal,
+        used: freeUsed,
+        remaining: freeTotal - freeUsed,
+        hpUsed: derived.hpFreePoints,
+        ppUsed: derived.ppFreePoints
+      }
     };
   }
 
@@ -567,29 +593,44 @@
 
   function renderPoints() {
     const pools = calculatePointPools();
+    const derived = calculateDerivedValues();
     const definitions = [
-      { key: "occupation", label: "職業ポイント", otherPath: "pointPools.occupationOther", description: "技能への割り振りに使用" },
-      { key: "ability", label: "異能力ポイント", otherPath: "pointPools.abilityOther", description: "異能力への割り振りに使用" },
-      { key: "free", label: "フリーポイント", otherPath: "pointPools.freeOther", description: "技能・異能力などへ使用" }
+      { key: "occupation", label: "職業ポイント", otherPath: "pointPools.occupationOther" },
+      { key: "ability", label: "異能力ポイント", otherPath: "pointPools.abilityOther" },
+      { key: "free", label: "フリーポイント", otherPath: "pointPools.freeOther" }
     ];
 
-    // ポイント管理も、全体を開閉でき、さらに各ポイント種別を個別に開閉できます。
+    // ポイント管理は、追加分・使用分・残りを内訳付きで確認できるようにします。
     $("#pointsGrid").innerHTML = definitions.map(def => {
       const pool = pools[def.key];
+      const isFree = def.key === "free";
       return `
         <details class="point-card collapse-details" data-collapse-id="point-${def.key}" open>
           <summary class="collapse-summary">
             <span class="collapse-summary-title">${def.label}</span>
           </summary>
           <div class="collapse-body">
-            <p class="small-note">${def.description}</p>
-            <div class="point-numbers">
-              <div class="point-number"><small>基本値</small><strong>${pool.base}</strong></div>
-              <div class="point-number"><small>その他</small><strong>${pool.other >= 0 ? "+" : ""}${pool.other}</strong></div>
-              <div class="point-number"><small>合計</small><strong>${pool.total}</strong></div>
-              <div class="point-number"><small>使用</small><strong>${pool.used}</strong></div>
-              <div class="point-number"><small>残り</small><strong>${pool.remaining}</strong></div>
+            <div class="point-numbers ${isFree ? "point-numbers-free" : ""}">
+              <div class="point-number"><small>基本値</small><strong data-point-value="base">${pool.base}</strong></div>
+              ${isFree ? `<div class="point-number"><small>知名度加算</small><strong data-point-value="reputation">+${pool.reputation}</strong></div>` : ""}
+              <div class="point-number"><small>その他</small><strong data-point-value="other">${pool.other >= 0 ? "+" : ""}${pool.other}</strong></div>
+              <div class="point-number"><small>合計</small><strong data-point-value="total">${pool.total}</strong></div>
+              <div class="point-number"><small>使用</small><strong data-point-value="used">${pool.used}</strong></div>
+              <div class="point-number"><small>残り</small><strong data-point-value="remaining">${pool.remaining}</strong></div>
             </div>
+            ${isFree ? `
+              <div class="form-grid two-column free-point-allocation-grid">
+                <label class="field point-input">
+                  <span>HPへのフリーポイント割り振り</span>
+                  <input type="number" min="0" step="1" data-bind="derived.hpFreePoints" value="${derived.hpFreePoints}" />
+                </label>
+                <label class="field point-input">
+                  <span>PPへのフリーポイント割り振り</span>
+                  <input type="number" min="0" step="1" data-bind="derived.ppFreePoints" value="${derived.ppFreePoints}" />
+                </label>
+              </div>
+              <p class="small-note free-point-allocation-note">1ポイント割り振るごとにHP・PPが1ポイント増加します。</p>
+            ` : ""}
             <label class="field point-input">
               <span>その他ポイント（手入力）</span>
               <input type="number" data-bind="${def.otherPath}" value="${pool.other}" />
@@ -1527,12 +1568,12 @@
     pointCards.forEach((card, index) => {
       const pool = pools[poolOrder[index]];
       if (!pool) return;
-      const numbers = card.querySelectorAll(".point-number strong");
-      if (numbers[0]) numbers[0].textContent = String(pool.base);
-      if (numbers[1]) numbers[1].textContent = `${pool.other >= 0 ? "+" : ""}${pool.other}`;
-      if (numbers[2]) numbers[2].textContent = String(pool.total);
-      if (numbers[3]) numbers[3].textContent = String(pool.used);
-      if (numbers[4]) numbers[4].textContent = String(pool.remaining);
+      card.querySelector('[data-point-value="base"]')?.replaceChildren(document.createTextNode(String(pool.base)));
+      card.querySelector('[data-point-value="reputation"]')?.replaceChildren(document.createTextNode(`+${pool.reputation}`));
+      card.querySelector('[data-point-value="other"]')?.replaceChildren(document.createTextNode(`${pool.other >= 0 ? "+" : ""}${pool.other}`));
+      card.querySelector('[data-point-value="total"]')?.replaceChildren(document.createTextNode(String(pool.total)));
+      card.querySelector('[data-point-value="used"]')?.replaceChildren(document.createTextNode(String(pool.used)));
+      card.querySelector('[data-point-value="remaining"]')?.replaceChildren(document.createTextNode(String(pool.remaining)));
     });
 
     // 異能力カードの取得/使用コストだけを再計算。
