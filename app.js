@@ -380,9 +380,10 @@
   // -------------------------------------------------------------------
 
   function calculateDerivedValues() {
-    const { body, dexterity, sense, intelligence, mind, charisma } = character.stats;
+    const { body, intelligence, mind, charisma } = character.stats;
 
-    // ルールブックの派生値計算。
+    // HP / PP / イニシアチブは能力値から常に自動計算します。
+    // 既存JSONに残っている旧override値は互換性のため保持しますが、現在のUIでは使用しません。
     const calculatedHp = body + charisma + 3;
     const calculatedPp = 6 + mind;
     const calculatedInitiative = Math.ceil((body + intelligence) / 2);
@@ -390,20 +391,16 @@
     const hpFreePoints = Math.max(0, toNumber(character.derived.hpFreePoints));
     const ppFreePoints = Math.max(0, toNumber(character.derived.ppFreePoints));
 
-    const hpBase = character.derived.hpOverride === null ? calculatedHp : Number(character.derived.hpOverride);
-    const ppBase = character.derived.ppOverride === null ? calculatedPp : Number(character.derived.ppOverride);
-    const hp = hpBase + hpFreePoints;
-    const pp = ppBase + ppFreePoints;
-    const initiative = character.derived.initiativeOverride === null
-      ? calculatedInitiative
-      : Number(character.derived.initiativeOverride);
+    const hp = calculatedHp + hpFreePoints;
+    const pp = calculatedPp + ppFreePoints;
+    const initiative = calculatedInitiative;
 
     return {
       calculatedHp,
       calculatedPp,
       calculatedInitiative,
-      hpBase,
-      ppBase,
+      hpBase: calculatedHp,
+      ppBase: calculatedPp,
       hpFreePoints,
       ppFreePoints,
       hp,
@@ -585,14 +582,51 @@
         renderAll();
       });
     });
+
+    $("[data-roll-critical]")?.addEventListener("click", () => {
+      character.derived.criticalValue = rollD6();
+      const criticalInput = $("[data-bind=\"derived.criticalValue\"]");
+      if (criticalInput) criticalInput.value = String(character.derived.criticalValue);
+      refreshComputedOnly();
+      markPdfNeedsSaving();
+    });
+
+    // HP / PP / イニシアチブは常に計算結果を表示します。
+    const derived = calculateDerivedValues();
+    const hpDisplay = $("[data-derived-display=\"hp\"]");
+    const ppDisplay = $("[data-derived-display=\"pp\"]");
+    const initiativeDisplay = $("[data-derived-display=\"initiative\"]");
+    if (hpDisplay) hpDisplay.value = String(derived.hp);
+    if (ppDisplay) ppDisplay.value = String(derived.pp);
+    if (initiativeDisplay) initiativeDisplay.value = String(derived.initiative);
   }
 
   // -------------------------------------------------------------------
   // 6. ポイントUI
   // -------------------------------------------------------------------
 
+  function renderQuickPointStatus(pools = calculatePointPools()) {
+    const container = $("#quickPointStatus");
+    if (!container) return;
+
+    const items = [
+      ["職業ポイント", pools.occupation],
+      ["異能力ポイント", pools.ability],
+      ["フリーポイント", pools.free]
+    ];
+
+    container.innerHTML = items.map(([label, pool]) => `
+      <div class="quick-point-item">
+        <span class="quick-point-label">${label}</span>
+        <strong>${pool.used} / ${pool.total}</strong>
+        <span class="quick-point-remaining">残り ${pool.remaining}</span>
+      </div>
+    `).join("");
+  }
+
   function renderPoints() {
     const pools = calculatePointPools();
+    renderQuickPointStatus(pools);
     const derived = calculateDerivedValues();
     const definitions = [
       { key: "occupation", label: "職業ポイント", otherPath: "pointPools.occupationOther" },
@@ -618,19 +652,6 @@
               <div class="point-number"><small>使用</small><strong data-point-value="used">${pool.used}</strong></div>
               <div class="point-number"><small>残り</small><strong data-point-value="remaining">${pool.remaining}</strong></div>
             </div>
-            ${isFree ? `
-              <div class="form-grid two-column free-point-allocation-grid">
-                <label class="field point-input">
-                  <span>HPへのフリーポイント割り振り</span>
-                  <input type="number" min="0" step="1" data-bind="derived.hpFreePoints" value="${derived.hpFreePoints}" />
-                </label>
-                <label class="field point-input">
-                  <span>PPへのフリーポイント割り振り</span>
-                  <input type="number" min="0" step="1" data-bind="derived.ppFreePoints" value="${derived.ppFreePoints}" />
-                </label>
-              </div>
-              <p class="small-note free-point-allocation-note">1ポイント割り振るごとにHP・PPが1ポイント増加します。</p>
-            ` : ""}
             <label class="field point-input">
               <span>その他ポイント（手入力）</span>
               <input type="number" data-bind="${def.otherPath}" value="${pool.other}" />
@@ -1563,6 +1584,15 @@
     // 入力欄を再生成すると、文字入力中のカーソルが失われます。
     // そのため通常のタイピング中は「計算結果だけ」を更新します。
     const pools = calculatePointPools();
+    renderQuickPointStatus(pools);
+    const derived = calculateDerivedValues();
+    const hpDisplay = $("[data-derived-display=\"hp\"]");
+    const ppDisplay = $("[data-derived-display=\"pp\"]");
+    const initiativeDisplay = $("[data-derived-display=\"initiative\"]");
+    if (hpDisplay) hpDisplay.value = String(derived.hp);
+    if (ppDisplay) ppDisplay.value = String(derived.pp);
+    if (initiativeDisplay) initiativeDisplay.value = String(derived.initiative);
+
     const pointCards = $$(".point-card");
     const poolOrder = ["occupation", "ability", "free"];
     pointCards.forEach((card, index) => {

@@ -11,7 +11,7 @@
     JavaScriptとは分離しているため、色や余白、文字サイズなどを変更したい場合は
     style.cssを編集してください。
   -->
-  <link rel="stylesheet" href="style.css?v=stage3-7" />
+  <link rel="stylesheet" href="style.css?v=stage3-8" />
 
   <!--
     PDF出力用ライブラリ。
@@ -22,11 +22,12 @@
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
   <!-- 標準技能などの編集しやすいマスターデータ。 -->
-  <script defer src="data.js?v=stage3-7"></script>
+  <script defer src="data.js?v=stage3-8"></script>
   <!-- 本体ロジック。最後に読み込むことで、data.jsの内容を利用できます。 -->
-  <script defer src="app.js?v=stage3-7"></script>
+  <script defer src="app.js?v=stage3-8"></script>
 </head>
 <body>
+  <div id="quickPointStatus" class="quick-point-status no-print" aria-live="polite"></div>
   <!--
     折りたたみUIは <details> / <summary> を基本にしています。
     data-collapse-id は再描画後も開閉状態を維持するための内部識別子です。
@@ -191,31 +192,42 @@
             <div class="stats-grid" id="statsGrid"></div>
 
             <div class="derived-grid">
-              <div class="metric-card">
+              <div class="metric-card derived-auto-card">
                 <span>HP</span>
                 <div class="metric-row">
                   <span class="metric-formula">身体 + カリスマ + 3</span>
-                  <input data-bind="derived.hpOverride" type="number" />
+                  <input type="number" data-derived-display="hp" readonly />
                 </div>
+                <label class="field metric-allocation-field">
+                  <span>フリーポイント割り振り</span>
+                  <input type="number" min="0" step="1" data-bind="derived.hpFreePoints" placeholder="0" />
+                </label>
               </div>
-              <div class="metric-card">
+              <div class="metric-card derived-auto-card">
                 <span>PP</span>
                 <div class="metric-row">
                   <span class="metric-formula">精神 + 6</span>
-                  <input data-bind="derived.ppOverride" type="number" />
+                  <input type="number" data-derived-display="pp" readonly />
                 </div>
+                <label class="field metric-allocation-field">
+                  <span>フリーポイント割り振り</span>
+                  <input type="number" min="0" step="1" data-bind="derived.ppFreePoints" placeholder="0" />
+                </label>
               </div>
-              <div class="metric-card">
+              <div class="metric-card derived-auto-card">
                 <span>イニシアチブ</span>
                 <div class="metric-row">
                   <span class="metric-formula">ceil((身体 + 知性) / 2)</span>
-                  <input data-bind="derived.initiativeOverride" type="number" />
+                  <input type="number" data-derived-display="initiative" readonly />
                 </div>
               </div>
               <div class="metric-card critical-card">
                 <span>クリティカル値</span>
                 <div class="metric-row">
                   <input data-bind="derived.criticalValue" type="number" min="1" max="6" placeholder="1〜6" />
+                  <div class="stat-actions critical-actions">
+                    <button type="button" data-roll-critical>🎲 振る</button>
+                  </div>
                 </div>
               </div>
               <div class="metric-card reputation-card">
