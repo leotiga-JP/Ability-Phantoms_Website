@@ -649,16 +649,36 @@
       { key: "free", label: "フリーポイント", otherPath: "pointPools.freeOther" }
     ];
 
-    // ポイント管理は、追加分・使用分・残りを内訳付きで確認できるようにします。
+    // 各ポイントの算出根拠・用途を、ルールに沿ってカード内へ明記します。
+    const pointRules = {
+      occupation: {
+        formula: "器用＋感覚＋10（固定値）",
+        description: "キャラクターが選択した職業に記載されている取得可能な技能へ割り振れるポイントです。基本技能へ割り振れるポイントの上限は6ポイントまでです。"
+      },
+      ability: {
+        formula: "器用＋精神",
+        description: "取得した異能力やPPに割り振ることができるポイントです。"
+      },
+      free: {
+        formula: "（カリスマ＋感覚＋知性）÷2 の繰り上げ ＋ 知名度",
+        description: "好きな技能値・取得した異能力・HP・PPへ割り振れるポイントです。フリーポイント1ポイントは職業技能・異能力ポイントの1ポイントと同等で、HP・PPへ割り振る場合は1ポイントにつきHP・PPが1ポイント増加します。また、知名度が1上昇する度にフリーポイントが1ポイント付与されます。"
+      }
+    };
+
     $("#pointsGrid").innerHTML = definitions.map(def => {
       const pool = pools[def.key];
       const isFree = def.key === "free";
+      const rule = pointRules[def.key];
       return `
         <details class="point-card collapse-details" data-collapse-id="point-${def.key}" open>
           <summary class="collapse-summary">
             <span class="collapse-summary-title">${def.label}</span>
           </summary>
           <div class="collapse-body">
+            <div class="point-rule">
+              <strong class="point-rule-formula">算出：${rule.formula}</strong>
+              <p>${rule.description}</p>
+            </div>
             <div class="point-numbers ${isFree ? "point-numbers-free" : ""}">
               <div class="point-number"><small>基本値</small><strong data-point-value="base">${pool.base}</strong></div>
               ${isFree ? `<div class="point-number"><small>知名度加算</small><strong data-point-value="reputation">+${pool.reputation}</strong></div>` : ""}
