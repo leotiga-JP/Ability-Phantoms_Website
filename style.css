@@ -838,19 +838,13 @@ textarea { resize: vertical; }
   }
 }
 
-/* ポイント管理：ルールの算出根拠をカード内で確認できるようにします。 */
-.point-rule {
-  margin-bottom: 12px;
-  padding: 12px 14px;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: var(--surface-2);
-}
+/* ポイント管理：ルールの算出根拠。能力値の計算式と同程度の小ささで表示します。 */
 .point-rule-formula {
   color: var(--muted);
   font-size: .72rem;
   display: block;
   line-height: 1.45;
+  margin-bottom: 12px;
 }
 .point-rule p {
   margin: 6px 0 0;

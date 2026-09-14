@@ -666,9 +666,7 @@
             <span class="collapse-summary-title">${def.label}</span>
           </summary>
           <div class="collapse-body">
-            <div class="point-rule">
-              <span class="metric-formula point-rule-formula">算出：${rule.formula}</span>
-            </div>
+            <span class="metric-formula point-rule-formula">算出：${rule.formula}</span>
             <div class="point-numbers ${isFree ? "point-numbers-free" : ""}">
               <div class="point-number"><small>基本値</small><strong data-point-value="base">${pool.base}</strong></div>
               ${isFree ? `<div class="point-number"><small>知名度加算</small><strong data-point-value="reputation">+${pool.reputation}</strong></div>` : ""}
