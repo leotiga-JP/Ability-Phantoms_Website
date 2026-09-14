@@ -11,7 +11,7 @@
     JavaScriptとは分離しているため、色や余白、文字サイズなどを変更したい場合は
     style.cssを編集してください。
   -->
-  <link rel="stylesheet" href="style.css?v=stage3-9" />
+  <link rel="stylesheet" href="style.css?v=stage3-10" />
 
   <!--
     PDF出力用ライブラリ。
@@ -22,9 +22,9 @@
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
   <!-- 標準技能などの編集しやすいマスターデータ。 -->
-  <script defer src="data.js?v=stage3-9"></script>
+  <script defer src="data.js?v=stage3-10"></script>
   <!-- 本体ロジック。最後に読み込むことで、data.jsの内容を利用できます。 -->
-  <script defer src="app.js?v=stage3-9"></script>
+  <script defer src="app.js?v=stage3-10"></script>
 </head>
 <body>
   <div id="quickPointStatus" class="quick-point-status no-print" aria-live="polite"></div>
@@ -57,7 +57,7 @@
     <aside class="sidebar no-print">
       <nav>
         <button class="nav-button active" data-target="profileSection">基本情報</button>
-        <button class="nav-button" data-target="statsSection">能力値</button>
+        <button class="nav-button" data-target="statsSection">共通ステータス</button>
         <button class="nav-button" data-target="pointsSection">ポイント</button>
         <button class="nav-button" data-target="skillsSection">技能</button>
         <button class="nav-button" data-target="abilitiesSection">異能力</button>
@@ -171,14 +171,14 @@
       </section>
 
       <!-- =============================================================
-           2. 能力値
+           2. 共通ステータス
            ============================================================= -->
       <section class="sheet-section" id="statsSection">
         <details class="section-details collapse-details" data-collapse-id="statsSection" open>
           <summary class="section-summary">
             <div>
               <p class="section-number">02</p>
-              <h2>能力値</h2>
+              <h2>共通ステータス</h2>
             </div>
             <span class="summary-chevron" aria-hidden="true">⌄</span>
           </summary>
